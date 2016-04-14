@@ -2,6 +2,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <algorithm>
 #include <stdint.h>
 
 
@@ -9,7 +10,7 @@
 /// Performs external merge sort on the input file and stores it into the output file.
 /// </summary>
 /// <param name="inputFilename">The input filename.</param>
-/// <param name="size">The size of the data.</param>
+/// <param name="size">The size of the input data in bytes.</param>
 /// <param name="outputFilename">The output filename.</param>
 /// <param name="memsizeMB">The memsize in bytes</param>
 void externalSort( const char* inputFilename, uint64_t size, const char* outputFilename, uint64_t memsize )
@@ -18,32 +19,65 @@ void externalSort( const char* inputFilename, uint64_t size, const char* outputF
 	// Storing the number of data as uin32_t arguably makes more sense. 
 	// If we wanted to use >32GB of data, we would have an overflow,
 	// but in this case std::vector will overflow anyways.
-	uint32_t numData = static_cast<uint32_t>(memsize / sizeof( uint64_t ));
+	uint32_t chunkUints = static_cast<uint32_t>(memsize / sizeof( uint64_t ));
+	uint32_t numChunks = static_cast<uint32_t>(size / memsize);
+	if (size % memsize != 0)
+		++numChunks;
 
 	// Open input file in binary mode
 	std::ifstream input;
 	input.open( inputFilename, std::ifstream::in | std::ifstream::binary );
-
 	if (!input.is_open())
 	{
-		std::cerr << "Could not open file: " << inputFilename << std::endl;
+		std::cerr << "Could not open input file: " << inputFilename << std::endl;
 		return;
 	}
 
-	// Read first chunk
-	uint32_t cur = 0;
-	std::vector<uint64_t> data(numData);
-	while ( input.good() && cur < numData )
+	// Read the data chunks, sort them, then store each into a temporary output file
+	std::cout << "Start sorting chunks..." << std::endl;
+	std::vector<std::string> tmpFilenames;
+	for ( uint32_t curChunk = 0; curChunk < numChunks; ++curChunk )
 	{
-		// Read a single uint64 and insert into vector
-		char tmp[sizeof( uint64_t )];
-		input.read( tmp, sizeof( uint64_t ) );
-		data[cur] = *reinterpret_cast<uint64_t*>(tmp);
-		++cur;
+		// Read
+		uint32_t curUint = 0;
+		std::vector<uint64_t> data( chunkUints );
+		while ( input.good() && curUint < chunkUints )
+		{
+			// Read a single uint64 and insert into vector
+			char tmp[sizeof( uint64_t )];
+			input.read( tmp, sizeof( uint64_t ) );
+			data[curUint] = *reinterpret_cast<uint64_t*>(tmp);
+			++curUint;
+		}
+
+		// Sort
+		std::sort( data.begin(), data.end() );
+
+		// Store
+		std::ofstream tmpoutput;
+		// Open temporary output file
+		std::string outputName = std::string( outputFilename ) + "_tmp" + std::to_string( curChunk );
+		tmpFilenames.push_back( outputName );
+		tmpoutput.open( outputName, std::ofstream::out |
+						std::ofstream::binary | std::ofstream::app | std::ofstream::trunc );
+		tmpoutput.close();
+		std::cout << "Finished sorting chunk " << curChunk << " of " << numChunks << " chunks" << std::endl;
 	}
+
+	// K-way merge
+	std::cout << "Start " << numChunks << "-way merge of chunks" << std::endl;
+	
+
 
 	// Close streams
 	input.close();
+
+	// Clean up temporary files
+	for (std::string s : tmpFilenames)
+	{
+		std::remove( s.c_str() );
+	}
+	std::cout << "Finished and cleaned up, you can find the sorted data in: " << inputFilename << std::endl;
 }
 
 int main( int argc, char* argv[] )
@@ -65,7 +99,14 @@ int main( int argc, char* argv[] )
 	uint64_t memsizeMB = static_cast<uint64_t>(memsize);
 
 	// Call our external sorting algorithm
-	externalSort( argv[1], 0, argv[2], memsizeMB );
+	std::ifstream input( argv[1], std::ifstream::in | std::ifstream::binary | std::ifstream::ate );
+	if ( !input.is_open() )
+	{
+		std::cerr << "Could not open input file: " << argv[1] << std::endl;
+		return -1;
+	}
+	uint64_t size = input.tellg();
+	externalSort( argv[1], size, argv[2], memsizeMB * 1000000 );
 
 	return 0;
 }
