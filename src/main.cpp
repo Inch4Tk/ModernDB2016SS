@@ -7,6 +7,33 @@
 
 
 /// <summary>
+/// Closes the temporary streams opened in the external sort.
+/// </summary>
+/// <param name="tmpstreams">The tmpstreams.</param>
+void closeTempStreams( std::vector<std::ifstream>& tmpstreams )
+{
+	for ( std::ifstream& stream : tmpstreams )
+	{
+		if (stream.is_open())
+		{
+			stream.close();
+		}
+	}
+}
+
+/// <summary>
+/// Cleans up the temporary files created in the external sort.
+/// </summary>
+/// <param name="tmpFilenames">The temporary filenames.</param>
+void cleanupTempFiles( std::vector<std::string>& tmpFilenames )
+{
+	for ( std::string s : tmpFilenames )
+	{
+		std::remove( s.c_str() );
+	}
+}
+
+/// <summary>
 /// Performs external merge sort on the input file and stores it into the output file.
 /// </summary>
 /// <param name="inputFilename">The input filename.</param>
@@ -59,24 +86,69 @@ void externalSort( const char* inputFilename, uint64_t size, const char* outputF
 		std::string outputName = std::string( outputFilename ) + "_tmp" + std::to_string( curChunk );
 		tmpFilenames.push_back( outputName );
 		tmpoutput.open( outputName, std::ofstream::out |
-						std::ofstream::binary | std::ofstream::app | std::ofstream::trunc );
+						std::ofstream::binary | std::ofstream::trunc );
+		if ( !tmpoutput.is_open() || tmpoutput.fail() )
+		{
+			std::cerr << "Could not open temporary chunk file: " << outputName << std::endl;
+			cleanupTempFiles( tmpFilenames );
+			return;
+		}
+
+		// Write data
+		tmpoutput.write( reinterpret_cast<const char*>(&data[0]), chunkUints * sizeof( uint64_t ) );
+		if ( !tmpoutput.good() )
+		{
+			std::cerr << "An error occurred writing to " << outputName << std::endl;
+			tmpoutput.close();
+			cleanupTempFiles( tmpFilenames );
+			return;
+		}
+
+		// Close tmp chunk streams
 		tmpoutput.close();
 		std::cout << "Finished sorting chunk " << curChunk << " of " << numChunks << " chunks" << std::endl;
 	}
+	// Close input stream
+	input.close();
 
 	// K-way merge
 	std::cout << "Start " << numChunks << "-way merge of chunks" << std::endl;
-	
+
+	// Open the output stream
+	std::ofstream outputStream;
+	outputStream.open( outputFilename, std::ofstream::out |
+					   std::ofstream::binary | std::ofstream::trunc );
+	if ( !outputStream.is_open() )
+	{
+		std::cerr << "Could not open output file: " << outputFilename << std::endl;
+		cleanupTempFiles( tmpFilenames );
+		return;
+	}
+
+	// Open all the temp chunk streams
+	std::vector<std::ifstream> chunkStreams;
+	for ( std::string tmpChunkFile : tmpFilenames )
+	{
+		chunkStreams.push_back( std::ifstream( tmpChunkFile, std::ifstream::in | std::ifstream::binary ) );
+		if ( !chunkStreams.back().is_open() )
+		{
+			std::cerr << "Could not open temporary chunk file: " << tmpChunkFile << std::endl;
+			outputStream.close();
+			closeTempStreams( chunkStreams );
+			cleanupTempFiles( tmpFilenames );
+			return;
+		}
+	}
+
+	// Load small chunks of data and perform merges
 
 
 	// Close streams
-	input.close();
+	outputStream.close();
+	closeTempStreams( chunkStreams );
 
 	// Clean up temporary files
-	for (std::string s : tmpFilenames)
-	{
-		std::remove( s.c_str() );
-	}
+	cleanupTempFiles( tmpFilenames );
 	std::cout << "Finished and cleaned up, you can find the sorted data in: " << inputFilename << std::endl;
 }
 
