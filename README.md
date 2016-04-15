@@ -8,10 +8,10 @@ Project for TUM course: Datenbanksysteme und moderne CPU-Architekturen
 Go into project root folder (terminal). Execute the following commands.
 ```
 mkdir -p build && cd build
-cmake -G "Unix Makefiles" -D CMAKE_BUILD_TYPE=Debug ..
+cmake -G "Unix Makefiles" -D CMAKE_BUILD_TYPE=Release ..
 make all
 ```
-(Optional: Substitute Release as CMAKE_BUILD_TYPE)
+(Optional: Substitute Debug as CMAKE_BUILD_TYPE)
 
 # Build project on Windows
 Download Cmake GUI. Point Source directory to project root folder (the one containing this Readme).
