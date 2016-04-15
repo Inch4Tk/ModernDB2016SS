@@ -1,8 +1,8 @@
 # Introduction
 Project for TUM course: Datenbanksysteme und moderne CPU-Architekturen 
 
-# Dependencies
-* Cmake
+# Build Dependencies
+* Cmake 3.1 (Why? http://stackoverflow.com/questions/10984442/how-to-detect-c11-support-of-a-compiler-with-cmake/20165220#20165220 Installation Suggestion: See VagrantBootstrap.sh)
 
 # Build project on UNIX
 Go into project root folder (terminal). Execute the following commands.
@@ -27,6 +27,10 @@ vagrant up
 ```
 Creates and Provisions an Ubuntu LTE 14.04 VM. Install necessary buildtools, syncs project root folder to
 /vagrant
+
+# Tested on
+* Windows 7, with Visual Studio 2015 (v140) (Cmake version 3.5.1)
+* Ubuntu LTE 14.04 VM, with gcc 4.8.4 (Cmake version 3.5.2)
 
 # Executing
 From build folder
