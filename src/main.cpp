@@ -11,15 +11,17 @@
 /// Closes the temporary streams opened in the external sort.
 /// </summary>
 /// <param name="tmpstreams">The tmpstreams.</param>
-void closeTempStreams( std::vector<std::ifstream>& tmpstreams )
+void closeTempStreams( std::vector<std::ifstream*>& tmpstreams )
 {
-	for ( std::ifstream& stream : tmpstreams )
+	for ( std::ifstream* stream : tmpstreams )
 	{
-		if (stream.is_open())
+		if (stream->is_open())
 		{
-			stream.close();
+			stream->close();
 		}
+		delete stream;
 	}
+	tmpstreams.clear();
 }
 
 /// <summary>
@@ -41,21 +43,21 @@ void cleanupTempFiles( std::vector<std::string>& tmpFilenames )
 /// <param name="target">The target.</param>
 /// <param name="amount">The amount of uints to load.</param>
 /// <returns>Success</returns>
-bool loadChunk( std::ifstream& chunkStream, std::queue<uint64_t>& target, uint32_t amount )
+bool loadChunk( std::ifstream* chunkStream, std::queue<uint64_t>& target, uint32_t amount )
 {
 	uint32_t cur = 0;
-	while ( chunkStream.good() && cur < amount )
+	while ( chunkStream->good() && cur < amount )
 	{
 		// Read a single uint64 and insert into vector
 		uint64_t tmp;
-		chunkStream.read( reinterpret_cast<char*>(&tmp), sizeof( uint64_t ) );
-		if ( !chunkStream.fail() )
+		chunkStream->read( reinterpret_cast<char*>(&tmp), sizeof( uint64_t ) );
+		if ( !chunkStream->fail() )
 		{
 			target.push( tmp );
 		}
 		++cur;
 	}
-	if ( chunkStream.fail() && !chunkStream.eof() )
+	if ( chunkStream->fail() && !chunkStream->eof() )
 	{
 		return false;
 	}
@@ -167,11 +169,12 @@ void externalSort( const char* inputFilename, uint64_t size, const char* outputF
 	}
 
 	// Open all the temp chunk streams
-	std::vector<std::ifstream> chunkStreams;
+	std::vector<std::ifstream*> chunkStreams;
 	for ( std::string tmpChunkFile : tmpFilenames )
 	{
-		chunkStreams.push_back( std::ifstream( tmpChunkFile, std::ifstream::in | std::ifstream::binary ) );
-		if ( !chunkStreams.back().is_open() )
+		std::ifstream* stream = new std::ifstream( tmpChunkFile, std::ifstream::in | std::ifstream::binary );
+		chunkStreams.push_back( stream );
+		if ( !chunkStreams.back()->is_open() )
 		{
 			std::cerr << "Could not open temporary chunk file: " << tmpChunkFile << std::endl;
 			outputStream.close();
@@ -208,7 +211,7 @@ void externalSort( const char* inputFilename, uint64_t size, const char* outputF
 		uint32_t idx = 0;
 		for ( std::queue<uint64_t>& cd : chunkData )
 		{
-			if ( cd.empty() && !chunkStreams[idx].eof() )
+			if ( cd.empty() && !chunkStreams[idx]->eof() )
 			{
 				bool success = loadChunk( chunkStreams[idx], cd, smallChunkUints );
 				if ( !success )
@@ -226,7 +229,7 @@ void externalSort( const char* inputFilename, uint64_t size, const char* outputF
 				smallestIdx = idx;
 				curSmallest = cd.front();
 			}
-			allChunksEmpty = allChunksEmpty && cd.empty() && chunkStreams[idx].eof(); // Set empty bit if we are empty
+			allChunksEmpty = allChunksEmpty && cd.empty() && chunkStreams[idx]->eof(); // Set empty bit if we are empty
 			++idx;
 		}
 
