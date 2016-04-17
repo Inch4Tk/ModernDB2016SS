@@ -47,11 +47,11 @@ bool loadChunk( std::ifstream& chunkStream, std::queue<uint64_t>& target, uint32
 	while ( chunkStream.good() && cur < amount )
 	{
 		// Read a single uint64 and insert into vector
-		char tmp[sizeof( uint64_t )];
-		chunkStream.read( tmp, sizeof( uint64_t ) );
+		uint64_t tmp;
+		chunkStream.read( reinterpret_cast<char*>(&tmp), sizeof( uint64_t ) );
 		if ( !chunkStream.fail() )
 		{
-			target.push( *reinterpret_cast<uint64_t*>(tmp) );
+			target.push( tmp );
 		}
 		++cur;
 	}
@@ -100,11 +100,11 @@ void externalSort( const char* inputFilename, uint64_t size, const char* outputF
 		while ( input.good() && curUint < chunkUints )
 		{
 			// Read a single uint64 and insert into vector
-			char tmp[sizeof( uint64_t )];
-			input.read( tmp, sizeof( uint64_t ) );
+			uint64_t tmp;
+			input.read( reinterpret_cast<char*>(&tmp), sizeof( uint64_t ) );
 			if ( !input.fail() )
 			{
-				data.push_back( *reinterpret_cast<uint64_t*>(tmp) );
+				data.push_back( tmp );
 			}
 			++curUint;
 		}
@@ -297,11 +297,10 @@ void assertCorrectOrder( const char* outputFilename )
 	while ( output.good() )
 	{
 		// Read a single uint64 and insert into vector
-		char tmp[sizeof( uint64_t )];
-		output.read( tmp, sizeof( uint64_t ) );
+		uint64_t nextNumber;
+		output.read( reinterpret_cast<char*>(&nextNumber), sizeof( uint64_t ) );
 		if ( !output.fail() )
 		{
-			uint64_t nextNumber = *reinterpret_cast<uint64_t*>(tmp);
 			assert( nextNumber >= lastNumber ); // Just for nice exceptions
 			if (nextNumber < lastNumber)
 			{
