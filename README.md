@@ -18,7 +18,7 @@ Download Cmake GUI. Point Source directory to project root folder (the one conta
 Point Build directory to project_root/build or project_root/buildwin if you also plan to build for unix
 Configure -> Generate
 
-# Vagrant
+# (Optional) Vagrant
 Project contains vagrant file for quick Ubuntu VM creation.
 Download and install Vagrant + VirtualBox.
 Execute in project root.
