@@ -27,6 +27,10 @@ vagrant up
 ```
 Creates and Provisions an Ubuntu LTE 14.04 VM. Install necessary buildtools, syncs project root folder to
 /vagrant
+SSH connection can be started from the console with
+```
+vagrant ssh
+```
 
 # Tested on
 * Windows 7, with Visual Studio 2015 (v140) (Cmake version 3.5.1)
