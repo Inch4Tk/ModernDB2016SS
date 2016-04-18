@@ -149,7 +149,7 @@ void externalSort( const char* inputFilename, uint64_t size, const char* outputF
 
 		// Close tmp chunk streams
 		tmpoutput.close();
-		std::cout << "Finished sorting chunk " << curChunk << " of " << numChunks << " chunks" << std::endl;
+		std::cout << "Finished sorting chunk " << curChunk + 1 << " of " << numChunks << " chunks" << std::endl;
 	}
 	// Close input stream
 	input.close();
@@ -304,6 +304,7 @@ void assertCorrectOrder( const char* outputFilename )
 		output.read( reinterpret_cast<char*>(&nextNumber), sizeof( uint64_t ) );
 		if ( !output.fail() )
 		{
+			// Make checks
 			assert( nextNumber >= lastNumber ); // Just for nice exceptions
 			if (nextNumber < lastNumber)
 			{
@@ -345,6 +346,7 @@ int main( int argc, char* argv[] )
 	}
 	uint64_t size = input.tellg();
 	externalSort( argv[1], size, argv[2], memsizeMB * 1000000 );
+	std::cout << "Proceeding to check order of data..." << std::endl;
 	assertCorrectOrder( argv[2] );
 
 	return 0;
