@@ -16,7 +16,7 @@
 /// Closes the temporary streams opened in the external sort.
 /// </summary>
 /// <param name="tmpstreams">The tmpstreams.</param>
-void closeTempStreams( std::vector<std::ifstream*>& tmpstreams )
+void CloseTempStreams( std::vector<std::ifstream*>& tmpstreams )
 {
 	for( std::ifstream* stream : tmpstreams )
 	{
@@ -33,7 +33,7 @@ void closeTempStreams( std::vector<std::ifstream*>& tmpstreams )
 /// Cleans up the temporary files created in the external sort.
 /// </summary>
 /// <param name="tmpFilenames">The temporary filenames.</param>
-void cleanupTempFiles( std::vector<std::string>& tmpFilenames )
+void CleanupTempFiles( std::vector<std::string>& tmpFilenames )
 {
 	for( std::string s : tmpFilenames )
 	{
@@ -48,7 +48,7 @@ void cleanupTempFiles( std::vector<std::string>& tmpFilenames )
 /// <param name="target">The target.</param>
 /// <param name="amount">The amount of uints to load.</param>
 /// <returns>Success</returns>
-bool loadChunk( std::ifstream* chunkStream, std::queue<uint64_t>& target, uint32_t amount )
+bool LoadChunk( std::ifstream* chunkStream, std::queue<uint64_t>& target, uint32_t amount )
 {
 	uint32_t cur = 0;
 	while( chunkStream->good() && cur < amount )
@@ -80,7 +80,7 @@ bool loadChunk( std::ifstream* chunkStream, std::queue<uint64_t>& target, uint32
 /// <param name="size">The size of the input data in bytes.</param>
 /// <param name="outputFilename">The output filename.</param>
 /// <param name="memsizeMB">The memsize in bytes</param>
-void externalSort( const char* inputFilename, uint64_t size, const char* outputFilename, uint64_t memsize )
+void ExternalSort( const char* inputFilename, uint64_t size, const char* outputFilename, uint64_t memsize )
 {
 	// Number of uint64 in ram
 	// Storing the number of data as uin32_t arguably makes more sense. 
@@ -124,7 +124,7 @@ void externalSort( const char* inputFilename, uint64_t size, const char* outputF
 		{
 			std::cerr << "Error occurred while reading form input " << inputFilename << std::endl;
 			input.close();
-			cleanupTempFiles( tmpFilenames );
+			CleanupTempFiles( tmpFilenames );
 			return;
 		}
 
@@ -142,7 +142,7 @@ void externalSort( const char* inputFilename, uint64_t size, const char* outputF
 		{
 			std::cerr << "Could not open temporary chunk file: " << outputName << std::endl;
 			input.close();
-			cleanupTempFiles( tmpFilenames );
+			CleanupTempFiles( tmpFilenames );
 			return;
 		}
 
@@ -153,7 +153,7 @@ void externalSort( const char* inputFilename, uint64_t size, const char* outputF
 			std::cerr << "An error occurred writing to " << outputName << std::endl;
 			input.close();
 			tmpoutput.close();
-			cleanupTempFiles( tmpFilenames );
+			CleanupTempFiles( tmpFilenames );
 			return;
 		}
 
@@ -174,7 +174,7 @@ void externalSort( const char* inputFilename, uint64_t size, const char* outputF
 	if( !outputStream.is_open() )
 	{
 		std::cerr << "Could not open output file: " << outputFilename << std::endl;
-		cleanupTempFiles( tmpFilenames );
+		CleanupTempFiles( tmpFilenames );
 		return;
 	}
 
@@ -188,8 +188,8 @@ void externalSort( const char* inputFilename, uint64_t size, const char* outputF
 		{
 			std::cerr << "Could not open temporary chunk file: " << tmpChunkFile << std::endl;
 			outputStream.close();
-			closeTempStreams( chunkStreams );
-			cleanupTempFiles( tmpFilenames );
+			CloseTempStreams( chunkStreams );
+			CleanupTempFiles( tmpFilenames );
 			return;
 		}
 	}
@@ -223,13 +223,13 @@ void externalSort( const char* inputFilename, uint64_t size, const char* outputF
 		{
 			if( cd.empty() && !chunkStreams[idx]->eof() )
 			{
-				bool success = loadChunk( chunkStreams[idx], cd, smallChunkUints );
+				bool success = LoadChunk( chunkStreams[idx], cd, smallChunkUints );
 				if( !success )
 				{
 					std::cerr << "An error occurred reading from temporary chunk file " << tmpFilenames[idx] << std::endl;
 					outputStream.close();
-					closeTempStreams( chunkStreams );
-					cleanupTempFiles( tmpFilenames );
+					CloseTempStreams( chunkStreams );
+					CleanupTempFiles( tmpFilenames );
 					return;
 				}
 			}
@@ -254,8 +254,8 @@ void externalSort( const char* inputFilename, uint64_t size, const char* outputF
 			{
 				std::cerr << "An error occurred writing to " << outputFilename << std::endl;
 				outputStream.close();
-				closeTempStreams( chunkStreams );
-				cleanupTempFiles( tmpFilenames );
+				CloseTempStreams( chunkStreams );
+				CleanupTempFiles( tmpFilenames );
 				return;
 			}
 			outData.clear();
@@ -274,8 +274,8 @@ void externalSort( const char* inputFilename, uint64_t size, const char* outputF
 			{
 				std::cerr << "An error occurred writing to " << outputFilename << std::endl;
 				outputStream.close();
-				closeTempStreams( chunkStreams );
-				cleanupTempFiles( tmpFilenames );
+				CloseTempStreams( chunkStreams );
+				CleanupTempFiles( tmpFilenames );
 				return;
 			}
 			outData.clear();
@@ -284,10 +284,10 @@ void externalSort( const char* inputFilename, uint64_t size, const char* outputF
 
 	// Close streams
 	outputStream.close();
-	closeTempStreams( chunkStreams );
+	CloseTempStreams( chunkStreams );
 
 	// Clean up temporary files
-	cleanupTempFiles( tmpFilenames );
+	CleanupTempFiles( tmpFilenames );
 	std::cout << "Finished and cleaned up, you can find the sorted data in: " << outputFilename << std::endl;
 }
 
@@ -295,7 +295,7 @@ void externalSort( const char* inputFilename, uint64_t size, const char* outputF
 /// Asserts the correct order of numbers in the output file.
 /// </summary>
 /// <param name="outputFilename">The output filename.</param>
-void assertCorrectOrderSort( const char* outputFilename )
+void AssertCorrectOrderSort( const char* outputFilename )
 {
 	uint64_t lastNumber = 0;
 	// Open output file in binary mode
@@ -327,4 +327,62 @@ void assertCorrectOrderSort( const char* outputFilename )
 	}
 	std::cout << "No wrong order in output file detected!" << std::endl;
 	output.close();
+}
+
+/// <summary>
+/// Logs something only in debug compilation mode. Log output goes to std::cout.
+/// </summary>
+/// <param name="debugMessage">The debug message.</param>
+void LogDebug( const std::string& debugMessage )
+{
+#ifndef NDEBUG
+	LogDebug( std::wstring( debugMessage.begin(), debugMessage.end() ) );
+#endif
+}
+
+/// <summary>
+/// Logs something only in debug compilation mode. Log output goes to std::cout.
+/// </summary>
+/// <param name="debugMessage">The debug message.</param>
+void LogDebug( const std::wstring& debugMessage )
+{
+#ifndef NDEBUG
+	std::wcout << debugMessage << std::endl;
+#endif
+}
+
+/// <summary>
+/// Logs an error. Log output goes to std::cerr.
+/// </summary>
+/// <param name="errorMessage">The error message.</param>
+void LogError( const std::string& errorMessage )
+{
+	LogError( std::wstring( errorMessage.begin(), errorMessage.end() ) );
+}
+
+/// <summary>
+/// Logs an error. Log output goes to std::cerr.
+/// </summary>
+/// <param name="errorMessage">The error message.</param>
+void LogError( const std::wstring& errorMessage )
+{
+	std::wcerr << errorMessage << std::endl;
+}
+
+/// <summary>
+/// Logs the specified message, use this if the message should appear in Release mode. Log output goes to std::cout.
+/// </summary>
+/// <param name="message">The message.</param>
+void Log( const std::string& message )
+{
+	Log( std::wstring( message.begin(), message.end() ) );
+}
+
+/// <summary>
+/// Logs the specified message, use this if the message should appear in Release mode. Log output goes to std::cout.
+/// </summary>
+/// <param name="message">The message.</param>
+void Log( const std::wstring& message )
+{
+	std::wcout << message << std::endl;
 }

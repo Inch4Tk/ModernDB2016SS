@@ -2,6 +2,8 @@
 # Set all sourcefiles
 set(MY_SRCS
 	main.cpp
+	macros.h
+	defines.h
 	helpers.h
 	helpers.cpp
 )
