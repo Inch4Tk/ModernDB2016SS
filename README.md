@@ -1,5 +1,6 @@
 # Introduction
 Project for TUM course: Datenbanksysteme und moderne CPU-Architekturen 
+The submission commits are tagged. (Github release) If the current submission tag does not exist, I may have forgot, check out the last commit.
 
 # Build Dependencies
 * Cmake 3.1 (Why? http://stackoverflow.com/questions/10984442/how-to-detect-c11-support-of-a-compiler-with-cmake/20165220#20165220 Installation Suggestion: See VagrantBootstrap.sh)

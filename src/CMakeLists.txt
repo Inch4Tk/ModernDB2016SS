@@ -2,6 +2,8 @@
 # Set all sourcefiles
 set(MY_SRCS
 	main.cpp
+	helpers.h
+	helpers.cpp
 )
 
 # Add a build executable
