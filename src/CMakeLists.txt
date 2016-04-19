@@ -6,6 +6,10 @@ set(MY_SRCS
 	defines.h
 	helpers.h
 	helpers.cpp
+	buffer/BufferManager.h
+	buffer/BufferManager.cpp
+	buffer/BufferFrame.h
+	buffer/BufferFrame.cpp
 )
 
 # Add a build executable
