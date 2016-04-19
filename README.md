@@ -40,5 +40,5 @@ vagrant ssh
 # Executing
 From build folder
 ```
-./sort inputFile outputFile memoryBufferInMB
+./moderndb
 ```

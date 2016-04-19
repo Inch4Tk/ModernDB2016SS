@@ -17,6 +17,15 @@ BufferFrame::~BufferFrame()
 }
 
 /// <summary>
+/// Gets the page identifier.
+/// </summary>
+/// <returns></returns>
+uint64_t BufferFrame::GetPageId() const
+{
+	return mPageId;
+}
+
+/// <summary>
 /// Gets the data from the buffer frames page.
 /// </summary>
 /// <returns>Datapointer</returns>

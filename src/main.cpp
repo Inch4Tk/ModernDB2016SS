@@ -1,4 +1,6 @@
+
 #include "helpers.h"
+#include "buffer/BufferManager.h"
 
 #include <iostream>
 #include <string>
@@ -7,7 +9,7 @@
 
 int main( int argc, char* argv[] )
 {
-
+	BufferManager mgr( 123 );
 
 	return 0;
 }

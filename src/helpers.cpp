@@ -18,9 +18,9 @@
 /// <param name="tmpstreams">The tmpstreams.</param>
 void CloseTempStreams( std::vector<std::ifstream*>& tmpstreams )
 {
-	for( std::ifstream* stream : tmpstreams )
+	for ( std::ifstream* stream : tmpstreams )
 	{
-		if( stream->is_open() )
+		if ( stream->is_open() )
 		{
 			stream->close();
 		}
@@ -35,7 +35,7 @@ void CloseTempStreams( std::vector<std::ifstream*>& tmpstreams )
 /// <param name="tmpFilenames">The temporary filenames.</param>
 void CleanupTempFiles( std::vector<std::string>& tmpFilenames )
 {
-	for( std::string s : tmpFilenames )
+	for ( std::string s : tmpFilenames )
 	{
 		std::remove( s.c_str() );
 	}
@@ -51,18 +51,18 @@ void CleanupTempFiles( std::vector<std::string>& tmpFilenames )
 bool LoadChunk( std::ifstream* chunkStream, std::queue<uint64_t>& target, uint32_t amount )
 {
 	uint32_t cur = 0;
-	while( chunkStream->good() && cur < amount )
+	while ( chunkStream->good() && cur < amount )
 	{
 		// Read a single uint64 and insert into vector
 		uint64_t tmp;
 		chunkStream->read( reinterpret_cast<char*>(&tmp), sizeof( uint64_t ) );
-		if( !chunkStream->fail() )
+		if ( !chunkStream->fail() )
 		{
 			target.push( tmp );
 		}
 		++cur;
 	}
-	if( chunkStream->fail() && !chunkStream->eof() )
+	if ( chunkStream->fail() && !chunkStream->eof() )
 	{
 		return false;
 	}
@@ -89,13 +89,13 @@ void ExternalSort( const char* inputFilename, uint64_t size, const char* outputF
 	assert( memsize / sizeof( uint64_t ) <= static_cast<uint64_t>(UINT32_MAX) );
 	uint32_t chunkUints = static_cast<uint32_t>(memsize / sizeof( uint64_t ));
 	uint32_t numChunks = static_cast<uint32_t>(size / memsize);
-	if( size % memsize != 0 )
+	if ( size % memsize != 0 )
 		++numChunks;
 
 	// Open input file in binary mode
 	std::ifstream input;
 	input.open( inputFilename, std::ifstream::in | std::ifstream::binary );
-	if( !input.is_open() )
+	if ( !input.is_open() )
 	{
 		std::cerr << "Could not open input file: " << inputFilename << std::endl;
 		return;
@@ -104,23 +104,23 @@ void ExternalSort( const char* inputFilename, uint64_t size, const char* outputF
 	// Read the data chunks, sort them, then store each into a temporary output file
 	std::cout << "Start sorting chunks..." << std::endl;
 	std::vector<std::string> tmpFilenames;
-	for( uint32_t curChunk = 0; curChunk < numChunks; ++curChunk )
+	for ( uint32_t curChunk = 0; curChunk < numChunks; ++curChunk )
 	{
 		// Read
 		uint32_t curUint = 0;
 		std::vector<uint64_t> data;
-		while( input.good() && curUint < chunkUints )
+		while ( input.good() && curUint < chunkUints )
 		{
 			// Read a single uint64 and insert into vector
 			uint64_t tmp;
 			input.read( reinterpret_cast<char*>(&tmp), sizeof( uint64_t ) );
-			if( !input.fail() )
+			if ( !input.fail() )
 			{
 				data.push_back( tmp );
 			}
 			++curUint;
 		}
-		if( input.fail() && !input.eof() )
+		if ( input.fail() && !input.eof() )
 		{
 			std::cerr << "Error occurred while reading form input " << inputFilename << std::endl;
 			input.close();
@@ -138,7 +138,7 @@ void ExternalSort( const char* inputFilename, uint64_t size, const char* outputF
 		tmpFilenames.push_back( outputName );
 		tmpoutput.open( outputName, std::ofstream::out |
 						std::ofstream::binary | std::ofstream::trunc );
-		if( !tmpoutput.is_open() || tmpoutput.fail() )
+		if ( !tmpoutput.is_open() || tmpoutput.fail() )
 		{
 			std::cerr << "Could not open temporary chunk file: " << outputName << std::endl;
 			input.close();
@@ -148,7 +148,7 @@ void ExternalSort( const char* inputFilename, uint64_t size, const char* outputF
 
 		// Write data
 		tmpoutput.write( reinterpret_cast<const char*>(&data[0]), data.size() * sizeof( uint64_t ) );
-		if( tmpoutput.fail() )
+		if ( tmpoutput.fail() )
 		{
 			std::cerr << "An error occurred writing to " << outputName << std::endl;
 			input.close();
@@ -171,7 +171,7 @@ void ExternalSort( const char* inputFilename, uint64_t size, const char* outputF
 	std::ofstream outputStream;
 	outputStream.open( outputFilename, std::ofstream::out |
 					   std::ofstream::binary | std::ofstream::trunc );
-	if( !outputStream.is_open() )
+	if ( !outputStream.is_open() )
 	{
 		std::cerr << "Could not open output file: " << outputFilename << std::endl;
 		CleanupTempFiles( tmpFilenames );
@@ -180,11 +180,11 @@ void ExternalSort( const char* inputFilename, uint64_t size, const char* outputF
 
 	// Open all the temp chunk streams
 	std::vector<std::ifstream*> chunkStreams;
-	for( std::string tmpChunkFile : tmpFilenames )
+	for ( std::string tmpChunkFile : tmpFilenames )
 	{
 		std::ifstream* stream = new std::ifstream( tmpChunkFile, std::ifstream::in | std::ifstream::binary );
 		chunkStreams.push_back( stream );
-		if( !chunkStreams.back()->is_open() )
+		if ( !chunkStreams.back()->is_open() )
 		{
 			std::cerr << "Could not open temporary chunk file: " << tmpChunkFile << std::endl;
 			outputStream.close();
@@ -212,19 +212,19 @@ void ExternalSort( const char* inputFilename, uint64_t size, const char* outputF
 	std::vector<uint64_t> outData;
 	std::vector<std::queue<uint64_t>> chunkData( chunkStreams.size() );
 	uint32_t smallChunkUints = chunkUints / numChunks;
-	while( true )
+	while ( true )
 	{
 		// Go over all chunks and select the chunk with the smallest number
 		bool allChunksEmpty = true;
 		uint64_t curSmallest = UINT64_MAX;
 		uint32_t smallestIdx = 0;
 		uint32_t idx = 0;
-		for( std::queue<uint64_t>& cd : chunkData )
+		for ( std::queue<uint64_t>& cd : chunkData )
 		{
-			if( cd.empty() && !chunkStreams[idx]->eof() )
+			if ( cd.empty() && !chunkStreams[idx]->eof() )
 			{
 				bool success = LoadChunk( chunkStreams[idx], cd, smallChunkUints );
-				if( !success )
+				if ( !success )
 				{
 					std::cerr << "An error occurred reading from temporary chunk file " << tmpFilenames[idx] << std::endl;
 					outputStream.close();
@@ -234,7 +234,7 @@ void ExternalSort( const char* inputFilename, uint64_t size, const char* outputF
 				}
 			}
 
-			if( !cd.empty() && cd.front() < curSmallest )
+			if ( !cd.empty() && cd.front() < curSmallest )
 			{
 				smallestIdx = idx;
 				curSmallest = cd.front();
@@ -244,13 +244,13 @@ void ExternalSort( const char* inputFilename, uint64_t size, const char* outputF
 		}
 
 		// Make a check if all chunks are empty and terminate
-		if( allChunksEmpty )
+		if ( allChunksEmpty )
 		{
-			if( outData.size() > 0 )
+			if ( outData.size() > 0 )
 			{
 				outputStream.write( reinterpret_cast<const char*>(&outData[0]), outData.size() * sizeof( uint64_t ) );
 			}
-			if( outputStream.fail() )
+			if ( outputStream.fail() )
 			{
 				std::cerr << "An error occurred writing to " << outputFilename << std::endl;
 				outputStream.close();
@@ -267,10 +267,10 @@ void ExternalSort( const char* inputFilename, uint64_t size, const char* outputF
 		chunkData[smallestIdx].pop();
 
 		// Write back output buffer if it is full
-		if( outData.size() >= smallChunkUints )
+		if ( outData.size() >= smallChunkUints )
 		{
 			outputStream.write( reinterpret_cast<const char*>(&outData[0]), outData.size() * sizeof( uint64_t ) );
-			if( outputStream.fail() )
+			if ( outputStream.fail() )
 			{
 				std::cerr << "An error occurred writing to " << outputFilename << std::endl;
 				outputStream.close();
@@ -301,22 +301,22 @@ void AssertCorrectOrderSort( const char* outputFilename )
 	// Open output file in binary mode
 	std::ifstream output;
 	output.open( outputFilename, std::ifstream::in | std::ifstream::binary );
-	if( !output.is_open() )
+	if ( !output.is_open() )
 	{
 		std::cerr << "Could not open output file: " << outputFilename << std::endl;
 		return;
 	}
 
-	while( output.good() )
+	while ( output.good() )
 	{
 		// Read a single uint64 and insert into vector
 		uint64_t nextNumber;
 		output.read( reinterpret_cast<char*>(&nextNumber), sizeof( uint64_t ) );
-		if( !output.fail() )
+		if ( !output.fail() )
 		{
 			// Make checks
 			assert( nextNumber >= lastNumber ); // Just for nice exceptions
-			if( nextNumber < lastNumber )
+			if ( nextNumber < lastNumber )
 			{
 				std::cerr << "Wrong order in output file detected, " << nextNumber << " is smaller than " << lastNumber << std::endl;
 				output.close();
@@ -347,7 +347,7 @@ void LogDebug( const std::string& debugMessage )
 void LogDebug( const std::wstring& debugMessage )
 {
 #ifndef NDEBUG
-	std::wcout << debugMessage << std::endl;
+	std::wcout << "DebugInfo: " << debugMessage << std::endl;
 #endif
 }
 
@@ -366,7 +366,7 @@ void LogError( const std::string& errorMessage )
 /// <param name="errorMessage">The error message.</param>
 void LogError( const std::wstring& errorMessage )
 {
-	std::wcerr << errorMessage << std::endl;
+	std::wcerr << "Error: " << errorMessage << std::endl;
 }
 
 /// <summary>
