@@ -85,7 +85,36 @@ void BufferManager::LoadPage( BufferFrame& frame )
 /// <param name="pageId">The page identifier.</param>
 void BufferManager::WritePage( BufferFrame& frame )
 {
+	// TODO: Think about checking for fixed/exclusiveness
 
+	auto ids = SplitPageId( frame.GetPageId() );
+	// Open page file in binary mode
+	std::string segmentName = std::to_string( ids.first );
+	std::ofstream segment;
+	segment.open( segmentName, std::ifstream::out | std::ifstream::binary );
+	if ( !segment.is_open() )
+	{
+		LogError( "Failed to open segment file " + segmentName );
+		throw std::exception();
+	}
+
+	// Find position in output file
+	uint64_t pos = ids.second * DB_PAGE_SIZE;
+	segment.seekp( pos );
+	segment.write( reinterpret_cast<char*>(frame.GetData()), DB_PAGE_SIZE );
+
+	// Check for any errors reading
+	if ( segment.fail() )
+	{
+		LogError( "Write error in segment " + segmentName + " on page " + std::to_string( ids.second ) );
+		throw std::exception();
+	}
+
+	// Remove dirty flag from frame
+	frame.mDirty = false;
+
+	// Cleanup
+	segment.close();
 }
 
 /// <summary>
