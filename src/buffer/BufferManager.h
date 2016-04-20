@@ -2,11 +2,11 @@
 #ifndef BUFFER_MANAGER_H
 #define BUFFER_MANAGER_H
 
+#include "BufferFrame.h"
+
 #include <stdint.h>
 #include <utility>
-
-// Forwards
-class BufferFrame;
+#include <vector>
 
 class BufferManager
 {
@@ -18,9 +18,15 @@ public:
 	void UnfixPage( BufferFrame& frame, bool isDirty );
 
 private:
-
 	uint32_t mPageCount;
+	// Memory and Buffer related
+	uint8_t* mBufferMemory = nullptr;
+	std::vector<BufferFrame> mFrames;
+	// TODO:
+	// Hash-Map containing page -> buffer
+	// Some sort of List containing unfixed pages (sorted in a scheme that allows for reuse)
 
+	// Helpers
 	void LoadPage( BufferFrame& frame );
 	void WritePage( BufferFrame& frame );
 	std::pair<uint64_t, uint64_t> SplitPageId( uint64_t pageId );

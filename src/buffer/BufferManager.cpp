@@ -1,8 +1,8 @@
 #include "BufferManager.h"
 
-#include "BufferFrame.h"
 #include "helpers.h"
 #include "defines.h"
+#include "macros.h"
 
 #include <string>
 #include <fstream>
@@ -15,6 +15,14 @@
 /// <param name="pageCount">The page count.</param>
 BufferManager::BufferManager( uint32_t pageCount ) : mPageCount( pageCount )
 {
+	// Create and allocate huge chunk of consecutive memory
+	mBufferMemory = new uint8_t[pageCount * DB_PAGE_SIZE];
+	// Create buffer frames that divide up the memory
+	mFrames.resize( pageCount );
+	for ( uint32_t i = 0; i < mFrames.size(); ++i)
+	{
+		mFrames[i].mData = mBufferMemory + i * DB_PAGE_SIZE;
+	}
 }
 
 /// <summary>
@@ -22,7 +30,18 @@ BufferManager::BufferManager( uint32_t pageCount ) : mPageCount( pageCount )
 /// </summary>
 BufferManager::~BufferManager()
 {
+	// TODO: Think about a way to handle still fixed frames
+	// Write all dirty frames back to disc
+	for ( BufferFrame& f : mFrames )
+	{
+		if (f.IsDirty())
+		{
+			WritePage( f );
+		}
+	}
+	mFrames.clear();
 
+	ADELETE( mBufferMemory );
 }
 
 /// <summary>
@@ -62,6 +81,7 @@ void BufferManager::LoadPage( BufferFrame& frame )
 	{
 		// The segment does not yet exist, we just pretend we loaded the page,
 		// this is valid behavior since there is no data yet.
+		memset( frame.mData, 0, DB_PAGE_SIZE ); // Zero out the memory
 		frame.mLoaded = true;
 		return;
 	}
@@ -77,7 +97,7 @@ void BufferManager::LoadPage( BufferFrame& frame )
 	// Read data from input file
 	uint64_t pos = ids.second * DB_PAGE_SIZE;
 	segment.seekg( pos );
-	segment.read( reinterpret_cast<char*>(frame.GetData()), DB_PAGE_SIZE );
+	segment.read( reinterpret_cast<char*>(frame.mData), DB_PAGE_SIZE );
 
 	// Check for any errors reading (ignore eof errors, since these are normal if the page was not even created yet)
 	if ( segment.fail() && !segment.eof() )
@@ -115,7 +135,7 @@ void BufferManager::WritePage( BufferFrame& frame )
 	// Find position in output file
 	uint64_t pos = ids.second * DB_PAGE_SIZE;
 	segment.seekp( pos );
-	segment.write( reinterpret_cast<char*>(frame.GetData()), DB_PAGE_SIZE );
+	segment.write( reinterpret_cast<char*>(frame.mData), DB_PAGE_SIZE );
 
 	// Check for any errors reading
 	if ( segment.fail() )
