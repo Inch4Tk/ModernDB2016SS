@@ -1,5 +1,7 @@
 #include "helpers.h"
 
+#include "defines.h"
+
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -8,15 +10,12 @@
 #include <algorithm>
 #include <assert.h>
 
-
-#ifdef __unix__      
+#ifdef PLATFORM_UNIX      
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#define PLATFORM_UNIX
-#elif defined(_WIN32) || defined(WIN32) 
+#elif defined(PLATFORM_WIN)
 #include <windows.h>
-#define PLATFORM_WIN
 #endif
 
 
