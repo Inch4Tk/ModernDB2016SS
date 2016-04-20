@@ -413,7 +413,7 @@ bool FileExists( const std::string& filename )
 	return (dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
 #else
 	LogError( "Could not detect a valid platform!" );
-	throw std::runtime_error("Failed: Detect Platform");
+	throw std::runtime_error("Error: Detect Platform");
 	return false;
 #endif
 }

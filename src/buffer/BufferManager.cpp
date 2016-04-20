@@ -34,9 +34,18 @@ BufferManager::~BufferManager()
 	// Write all dirty frames back to disc
 	for ( BufferFrame& f : mFrames )
 	{
-		if (f.IsDirty())
+		if ( f.IsDirty() )
 		{
-			WritePage( f );
+			try // Should one write crash, try to still write back as much of the rest as possible
+			{
+				WritePage( f );
+			}
+			catch (std::runtime_error& e)
+			{
+				LogError( e.what() );
+				LogError( "Caught runtime exception while writing back dirty files on shutdown. (PageId: " + 
+						  std::to_string( f.GetPageId() ) + ")" );
+			}
 		}
 	}
 	mFrames.clear();
@@ -52,6 +61,48 @@ BufferManager::~BufferManager()
 /// <returns></returns>
 BufferFrame& BufferManager::FixPage( uint64_t pageId, bool exclusive )
 {
+	// Fixing a page:
+	// - Acquire read lock on hash map
+	// - Search for page
+	// - Release read lock on hash map
+	// - If we found page acquire desired lock on page and change needed page atomic values (finished)
+	// - Else: Start replacement/loading process
+	// - Find free page with Page Replacement Algorithm (1)
+	// - Acquire write lock on hash map
+	//    (Locking hash map, why?: std::unordered_map is not guaranteed to be thread safe on writes)
+	// - Try acquire write lock on page: if not possible, it just got snatched away we then release hash map lock and go back to (1)
+	//    Reason: We can not acquire the lock on the page first, because then somebody might just try to access it before we lock the hash map
+	//    we would then proceed to remove this page from the map, and exchange it with something else, but the other access would
+	//    still expect to receive the old page after we release our lock and we have a big problem.
+	// - Remove found free page from hash map
+	// - Release write lock on hash map
+	// - Flush page if dirty
+	// - Load the new page
+	// - Acquire write exclusive lock on hash map
+	// - Insert page
+	// - Release write exclusive lock on hash map
+	// - If we just need read lock on page, release write lock and acquire read lock
+	// Unfixing a page:
+	// - Update needed page atomics
+	// - Release lock on page
+	
+	// Page Replacement Algorithm: Modified Second Chance
+	// - Maintain counter in every BufferFrame. Starting at 0.
+	// - Every time a page is unfixed increment counter by 1.
+	// - If the page is dirty, increment counter by 2 instead.
+	// To Find a page:
+	// - Cyclic walk over all pages (ignore fixed pages)
+	// - If page has a 0 counter, break and replace this page
+	// - Integer-Divide every counter by 2 after inspection
+	// - Remember page with smallest counter
+	// - If we could not find an unfixed page after a full cycle we fail
+	// - If we could not find a page with 0 counter, we free smallest counter page
+	// - If this page is not unfixed anymore, we restart the search 
+	//   (this round has a good chance to find something with 0 counter)
+	// Dealing with concurrency:
+	// - Counters are atomic
+	// - Fixed pages are secured by rw mutex (so we just check if unlocked)
+
 	return BufferFrame();
 }
 
@@ -91,7 +142,7 @@ void BufferManager::LoadPage( BufferFrame& frame )
 	if ( !segment.is_open() )
 	{
 		LogError( "Failed to open segment file " + segmentName );
-		throw std::exception();
+		throw std::runtime_error( "Error: Opening File" );
 	}
 
 	// Read data from input file
@@ -103,7 +154,7 @@ void BufferManager::LoadPage( BufferFrame& frame )
 	if ( segment.fail() && !segment.eof() )
 	{
 		LogError( "Read error in segment " + segmentName + " on page " + std::to_string( ids.second ) );
-		throw std::exception();
+		throw std::runtime_error( "Error: Reading File" );
 	}
 
 	// Set loaded bit
@@ -129,7 +180,7 @@ void BufferManager::WritePage( BufferFrame& frame )
 	if ( !segment.is_open() )
 	{
 		LogError( "Failed to open segment file " + segmentName );
-		throw std::exception();
+		throw std::runtime_error( "Error: Opening File" );
 	}
 
 	// Find position in output file
@@ -141,7 +192,7 @@ void BufferManager::WritePage( BufferFrame& frame )
 	if ( segment.fail() )
 	{
 		LogError( "Write error in segment " + segmentName + " on page " + std::to_string( ids.second ) );
-		throw std::exception();
+		throw std::runtime_error( "Error: Writing File" );
 	}
 
 	// Remove dirty flag from frame

@@ -26,7 +26,7 @@ public:
 
 private:
 	// Status
-	bool mLoaded = false;
+	bool mLoaded = false; // TODO: replace these with atomics
 	bool mDirty = false;
 	bool mFixed = false;
 	bool mExclusive = false;
