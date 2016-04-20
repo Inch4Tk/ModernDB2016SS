@@ -52,9 +52,20 @@ void BufferManager::UnfixPage( BufferFrame& frame, bool isDirty )
 /// <param name="pageId">The page identifier.</param>
 void BufferManager::LoadPage( BufferFrame& frame )
 {
+	// TODO: Think about checking for fixed/exclusiveness
+
 	auto ids = SplitPageId( frame.GetPageId() );
+
 	// Open page file in binary mode
 	std::string segmentName = std::to_string( ids.first );
+	if (!FileExists(segmentName))
+	{
+		// The segment does not yet exist, we just pretend we loaded the page,
+		// this is valid behavior since there is no data yet.
+		frame.mLoaded = true;
+		return;
+	}
+
 	std::ifstream segment;
 	segment.open( segmentName, std::ifstream::in | std::ifstream::binary );
 	if ( !segment.is_open() )
@@ -68,12 +79,15 @@ void BufferManager::LoadPage( BufferFrame& frame )
 	segment.seekg( pos );
 	segment.read( reinterpret_cast<char*>(frame.GetData()), DB_PAGE_SIZE );
 
-	// Check for any errors reading
-	if ( segment.fail() )
+	// Check for any errors reading (ignore eof errors, since these are normal if the page was not even created yet)
+	if ( segment.fail() && !segment.eof() )
 	{
-		LogError( "Read error in segment " + segmentName );
+		LogError( "Read error in segment " + segmentName + " on page " + std::to_string( ids.second ) );
 		throw std::exception();
 	}
+
+	// Set loaded bit
+	frame.mLoaded = true;
 
 	// Cleanup
 	segment.close();
