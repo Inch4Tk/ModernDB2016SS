@@ -8,6 +8,18 @@
 #include <algorithm>
 #include <assert.h>
 
+
+#ifdef __unix__      
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#define PLATFORM_UNIX
+#elif defined(_WIN32) || defined(WIN32) 
+#include <windows.h>
+#define PLATFORM_WIN
+#endif
+
+
 //////////////////////////////////////////////////////////////////////////
 /// Locally Available helpers/functions
 //////////////////////////////////////////////////////////////////////////
@@ -385,4 +397,24 @@ void Log( const std::string& message )
 void Log( const std::wstring& message )
 {
 	std::wcout << message << std::endl;
+}
+
+/// <summary>
+/// Cross platform check if file exists.
+/// </summary>
+/// <param name="filename">The filename.</param>
+/// <returns></returns>
+bool FileExists( const std::string& filename )
+{
+#ifdef PLATFORM_UNIX
+	struct stat buffer;
+	return (stat( name.c_str(), &buffer ) == 0);
+#elif defined(PLATFORM_WIN)
+	DWORD dwAttrib = GetFileAttributes( filename.c_str() );
+	return (dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
+#else
+	LogError( "Could not detect a valid platform!" );
+	throw std::runtime_error("Failed: Detect Platform");
+	return false;
+#endif
 }

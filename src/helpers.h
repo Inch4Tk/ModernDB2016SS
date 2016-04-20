@@ -13,6 +13,9 @@ void LogError( const std::wstring& errorMessage );
 void Log( const std::string& message );
 void Log( const std::wstring& message );
 
+// Filesystem specials
+bool FileExists( const std::string& filename );
+
 void ExternalSort( const char* inputFilename, uint64_t size, const char* outputFilename, uint64_t memsize );
 void AssertCorrectOrderSort( const char* outputFilename );
 
