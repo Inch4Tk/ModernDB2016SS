@@ -103,10 +103,15 @@ BufferManager::BufferManager( uint32_t pageCount ) : mPageCount( pageCount )
 /// </summary>
 BufferManager::~BufferManager()
 {
-	// TODO: Think about a way to handle still fixed frames
 	// Write all dirty frames back to disc
 	for ( BufferFrame& f : mFrames )
 	{
+		// Handling fixed frames:
+		// Option 1: Ignore
+		// Option 2: Try to lock
+		// Option 3: Assume some other system is in place that prevents this from happening
+		// For now I will go with option 2 for safety
+		f.Lock( true );
 		if ( f.IsDirty() )
 		{
 			try // Should one write crash, try to still write back as much of the rest as possible
@@ -121,6 +126,7 @@ BufferManager::~BufferManager()
 						  std::to_string( f.GetPageId() ) + ")" );
 			}
 		}
+		f.Unlock();
 	}
 	mFrames.clear();
 
@@ -128,7 +134,8 @@ BufferManager::~BufferManager()
 }
 
 /// <summary>
-/// Fixes the page. // TODO More doc .... throws on fail
+/// Fixes the page the requested page. Will load the page from disc if necessary. 
+/// Throws runtime error if no buffer space is available or if errors happen while loading/replacing pages.
 /// </summary>
 /// <param name="pageId">The page identifier.</param>
 /// <param name="exclusive">if set to <c>true</c> [exclusive].</param>
@@ -208,7 +215,8 @@ BufferFrame& BufferManager::FixPage( uint64_t pageId, bool exclusive )
 }
 
 /// <summary>
-/// Unfixes the page. // TODO More doc
+/// Unfixes the requested page. Will store the page to disc if it is dirty.
+/// Storing will happen at some point before overwriting memory or on DB shutdown.
 /// </summary>
 /// <param name="frame">The frame.</param>
 /// <param name="isDirty">if set to <c>true</c> [is dirty].</param>
@@ -277,8 +285,6 @@ BufferFrame* BufferManager::FindReplacementPage()
 /// <param name="pageId">The page identifier.</param>
 void BufferManager::LoadPage( BufferFrame& frame )
 {
-	// TODO: Think about checking for fixed/exclusiveness
-
 	auto ids = SplitPageId( frame.GetPageId() );
 
 	// Open page file in binary mode
@@ -327,8 +333,6 @@ void BufferManager::LoadPage( BufferFrame& frame )
 /// <param name="pageId">The page identifier.</param>
 void BufferManager::WritePage( BufferFrame& frame )
 {
-	// TODO: Think about checking for fixed/exclusiveness
-
 	auto ids = SplitPageId( frame.GetPageId() );
 	// Open page file in binary mode
 	std::string segmentName = std::to_string( ids.first );

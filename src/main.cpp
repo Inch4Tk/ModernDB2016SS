@@ -17,5 +17,12 @@ int main( int argc, char* argv[] )
 
 	BufferManager mgr( 100 );
 
+	BufferFrame& buf1 = mgr.FixPage( 0, true );
+	BufferFrame& buf2 = mgr.FixPage( 1, true );
+	BufferFrame& buf3 = mgr.FixPage( 2, true );
+	mgr.UnfixPage( buf1, true );
+	mgr.UnfixPage( buf2, true );
+	mgr.UnfixPage( buf3, false ); // Should not write this one back to disc
+
 	return 0;
 }
