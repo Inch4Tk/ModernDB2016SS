@@ -3,10 +3,14 @@
 #define BUFFER_FRAME_H
 
 #include <stdint.h>
+#include "utility/RWLock.h"
 
 // Forwards
 class BufferManager;
 
+/// <summary>
+/// Buffer frame class used by the buffer manager to store pages and related information.
+/// </summary>
 class BufferFrame
 {
 	friend class BufferManager;
@@ -32,6 +36,8 @@ private:
 	bool mExclusive = false;
 	uint32_t mShares = 0;
 	uint64_t mPageId = 0;
+	RWLock mRWLock;
+
 
 	void* mData = nullptr;
 };

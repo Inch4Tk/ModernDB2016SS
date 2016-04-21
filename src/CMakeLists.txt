@@ -6,6 +6,8 @@ set(MY_SRCS
 	utility/defines.h
 	utility/helpers.h
 	utility/helpers.cpp
+	utility/RWLock.h
+	utility/RWLock.cpp
 	buffer/BufferManager.h
 	buffer/BufferManager.cpp
 	buffer/BufferFrame.h
