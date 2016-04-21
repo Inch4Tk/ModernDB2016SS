@@ -19,11 +19,11 @@ public:
 	RWLock();
 	~RWLock();
 
-	inline bool TryLockWrite();
-	inline void LockWrite();
-	inline void LockRead();
-	inline void UnlockWrite();
-	inline void UnlockRead();
+	bool TryLockWrite();
+	void LockWrite();
+	void LockRead();
+	void UnlockWrite();
+	void UnlockRead();
 private:
 #ifdef PLATFORM_WIN
 	SRWLOCK mRwlock;

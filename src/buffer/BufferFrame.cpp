@@ -52,14 +52,6 @@ bool BufferFrame::IsDirty() const
 	return mDirty;
 }
 
-/// <summary>
-/// Determines whether this instance is fixed.
-/// </summary>
-/// <returns></returns>
-bool BufferFrame::IsFixed() const
-{
-	return mFixed;
-}
 
 /// <summary>
 /// Determines whether this instance is exclusive.

@@ -23,7 +23,6 @@ public:
 
 	bool IsLoaded() const;
 	bool IsDirty() const;
-	bool IsFixed() const;
 	bool IsExclusive() const;
 	bool IsShared() const;
 	
@@ -39,10 +38,10 @@ private:
 
 	void* mData = nullptr;
 	// Locking/unlocking methods (this is not just a pure mirror, we add functionality)
-	inline bool TryLockWrite();
-	inline void LockWrite();
-	inline void LockRead();
-	inline void Unlock();
+	bool TryLockWrite();
+	void LockWrite();
+	void LockRead();
+	void Unlock();
 };
 
 #endif

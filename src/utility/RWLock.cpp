@@ -25,6 +25,7 @@ RWLock::~RWLock()
 bool RWLock::TryLockWrite()
 {
 	// TODO:
+	return true;
 }
 
 /// <summary>
