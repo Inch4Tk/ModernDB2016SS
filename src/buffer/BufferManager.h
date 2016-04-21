@@ -3,10 +3,12 @@
 #define BUFFER_MANAGER_H
 
 #include "BufferFrame.h"
+#include "utility/RWLock.h"
 
 #include <stdint.h>
 #include <utility>
 #include <vector>
+#include <unordered_map>
 
 /// <summary>
 /// Concurrent Buffer Manager, enabling loading from and flushing to disc.
@@ -25,11 +27,11 @@ private:
 	// Memory and Buffer related
 	uint8_t* mBufferMemory = nullptr;
 	std::vector<BufferFrame> mFrames;
-	// TODO:
-	// Hash-Map containing page -> buffer
-	// Some sort of List containing unfixed pages (sorted in a scheme that allows for reuse)
+	RWLock mHashMapLock;
+	std::unordered_map<uint64_t, BufferFrame*> mLoadedFrames;
 
 	// Helpers
+	BufferFrame* FindReplacementPage();
 	void LoadPage( BufferFrame& frame );
 	void WritePage( BufferFrame& frame );
 	std::pair<uint64_t, uint64_t> SplitPageId( uint64_t pageId );
