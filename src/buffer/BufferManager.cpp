@@ -10,6 +10,7 @@
 #include <string>
 #include <fstream>
 #include <exception>
+#include <atomic>
 
 //////////////////////////////////////////////////////////////////////////
 // Overview (Thinking things through)
@@ -68,14 +69,17 @@
 // - Cyclic walk over all pages (ignore fixed pages)
 // - If page has a 0 counter, break and replace this page
 // - Integer-Divide every counter by 2 after inspection
-// - Remember page with smallest counter
-// - If we could not find an unfixed page after a full cycle we fail
-// - If we could not find a page with 0 counter, we free smallest counter page
-// - If this page is not unfixed anymore, we restart the search 
-//   (this round has a good chance to find something with 0 counter)
+// - If we could not find any unfixed page after 2 * pagecount tries we throw
+// - If there are unfixed pages, we continue until one page counter is 0
 // Dealing with concurrency:
 // - Counters are atomic
-// - Fixed pages are secured by rwlock (so we just check if unlocked)
+// Other notes:
+// - As an optimization do not acquire locks to check if pages are unfixed while walking,
+//   just use a more unreliable query, and try again if we fail to acquire a lock afterwards.
+// - Cyclic walks will skip elements in a concurrent situation, so no page replaces try for
+//   the same element. This might also mean, that in very very rare cases we throw, even though
+//   there are still a few unfixed pages left over. (Only happens if a lot of concurrent replaces
+//   happen and almost all pages are fixed)
 
 /// <summary>
 /// Initializes a new instance of the <see cref="BufferManager" /> class.
@@ -83,6 +87,7 @@
 /// <param name="pageCount">The page count.</param>
 BufferManager::BufferManager( uint32_t pageCount ) : mPageCount( pageCount )
 {
+	assert( pageCount != 0 );
 	// Create and allocate huge chunk of consecutive memory
 	mBufferMemory = new uint8_t[pageCount * DB_PAGE_SIZE];
 	// Create buffer frames that divide up the memory
@@ -209,9 +214,16 @@ BufferFrame& BufferManager::FixPage( uint64_t pageId, bool exclusive )
 /// <param name="isDirty">if set to <c>true</c> [is dirty].</param>
 void BufferManager::UnfixPage( BufferFrame& frame, bool isDirty )
 {
-	if (isDirty)
+	assert( isDirty ? frame.mExclusive.load() : true ); // Iff dirty then exclusive
+	// Update dirtiness and our eviction score for page replacement alg
+	if ( isDirty )
 	{
-		frame.mDirty = true; // TODO: atmoic
+		frame.mEvictionScore += 2;
+		frame.mDirty.store( true );
+	}
+	else
+	{
+		++frame.mEvictionScore;
 	}
 	frame.Unlock();
 }
@@ -219,9 +231,43 @@ void BufferManager::UnfixPage( BufferFrame& frame, bool isDirty )
 /// <summary>
 /// Finds a replacement/free page and returns it.
 /// </summary>
-/// <returns></returns>
+/// <returns>The found buffer. This returns a nullpointer in case we could not find any free buffer.</returns>
 BufferFrame* BufferManager::FindReplacementPage()
 {
+	static std::atomic<uint64_t> sharedVectorPos(0);
+	assert( mFrames.size() == mPageCount );
+	assert( mPageCount != 0 );
+
+	// Cyclic walk over at least 2*page count buffers until we find a buffer with 0 eviction score. 
+	// If we could not find a single unfixed one we stop looking.
+	// If we found atleast one, we continue searching.
+	// If multiple pages are searched simultaneously,
+	// this can also mean we skip some pages and visit some multiple times.
+	bool unfixedPageExisted;
+	do 
+	{
+		unfixedPageExisted = false;
+		for ( uint32_t i = 0; i < mPageCount * 2; ++i )
+		{
+			uint32_t pos = (sharedVectorPos++) % mPageCount; // Atomic post increment, then mod page count
+			BufferFrame& frame = mFrames[pos];
+			if ( !frame.IsFixedProbably() )
+			{
+				if ( frame.mEvictionScore == 0 )
+				{
+					return &frame;
+				}
+
+				unfixedPageExisted = true;
+				// We are forced to do a division, which is a non atomic operation. This is not a real problem.
+				// In rare occasions, a buffer can receive some extra eviction score through this.
+				frame.mEvictionScore.store( frame.mEvictionScore.load() / 2 );
+			}
+		}
+	} while (unfixedPageExisted);
+	
+
+	// Returning a nullpointer, since we could not find any valid page
 	return nullptr;
 }
 
@@ -242,7 +288,7 @@ void BufferManager::LoadPage( BufferFrame& frame )
 		// The segment does not yet exist, we just pretend we loaded the page,
 		// this is valid behavior since there is no data yet.
 		memset( frame.mData, 0, DB_PAGE_SIZE ); // Zero out the memory
-		frame.mLoaded = true;
+		frame.mLoaded.store( true );
 		return;
 	}
 
@@ -267,8 +313,9 @@ void BufferManager::LoadPage( BufferFrame& frame )
 		throw std::runtime_error( "Error: Reading File" );
 	}
 
-	// Set loaded bit
-	frame.mLoaded = true;
+	// Set loaded bit and reset eviction score
+	frame.mLoaded.store( true );
+	frame.mEvictionScore.store( DB_EVICTION_COUNTER_START );
 
 	// Cleanup
 	segment.close();
@@ -307,7 +354,7 @@ void BufferManager::WritePage( BufferFrame& frame )
 	}
 
 	// Remove dirty flag from frame
-	frame.mDirty = false;
+	frame.mDirty.store( false );
 
 	// Cleanup
 	segment.close();

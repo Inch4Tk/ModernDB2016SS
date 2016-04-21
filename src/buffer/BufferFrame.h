@@ -36,10 +36,13 @@ private:
 	std::atomic<bool> mDirty;
 	std::atomic<bool> mExclusive;
 	std::atomic<uint32_t> mSharedBy;
+	std::atomic<uint64_t> mEvictionScore;
 	uint64_t mPageId = 0;
 	RWLock mRWLock;
 
 	void* mData = nullptr;
+
+	bool IsFixedProbably();
 	// Locking/unlocking methods (this is not just a pure mirror, we add functionality)
 	bool TryLockWrite();
 	void Lock(bool exclusive);

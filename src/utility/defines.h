@@ -16,5 +16,6 @@
 #endif // Platform ifdef
 
 #define DB_PAGE_SIZE 16384u
+#define DB_EVICTION_COUNTER_START 0u
 
 #endif

@@ -25,7 +25,7 @@ RWLock::~RWLock()
 bool RWLock::TryLockWrite()
 {
 #ifdef PLATFORM_WIN
-	return TryAcquireSRWLockExclusive( &mRwlock );
+	return (TryAcquireSRWLockExclusive( &mRwlock ) > 0);
 #else
 	return (pthread_rwlock_trywrlock( &mRwlock ) == 0);
 #endif

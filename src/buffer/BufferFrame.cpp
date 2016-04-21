@@ -1,11 +1,13 @@
 #include "BufferFrame.h"
 
+#include "utility/defines.h"
+
 #include <assert.h>
 
 /// <summary>
 /// Initializes a new instance of the <see cref="BufferFrame"/> class.
 /// </summary>
-BufferFrame::BufferFrame() : mLoaded(false), mDirty(false), mExclusive(false), mSharedBy(0)
+BufferFrame::BufferFrame() : mLoaded(false), mDirty(false), mExclusive(false), mSharedBy(0), mEvictionScore( DB_EVICTION_COUNTER_START )
 {
 }
 
@@ -15,7 +17,8 @@ BufferFrame::BufferFrame() : mLoaded(false), mDirty(false), mExclusive(false), m
 /// <param name="">The .</param>
 BufferFrame::BufferFrame( const BufferFrame& bf ) : 
 	mLoaded( bf.mLoaded.load() ), mDirty( bf.mDirty.load() ), 
-	mExclusive( bf.mExclusive.load() ), mSharedBy( bf.mSharedBy.load() )
+	mExclusive( bf.mExclusive.load() ), mSharedBy( bf.mSharedBy.load() ),
+	mEvictionScore( bf.mEvictionScore.load() )
 {
 }
 
@@ -51,6 +54,15 @@ void* BufferFrame::GetData() const
 bool BufferFrame::IsDirty() const
 {
 	return mDirty.load();
+}
+
+/// <summary>
+/// Determines whether the buffer frame is fixed, at the time of the call. This is not 100% certain to hold until the value can be used.
+/// </summary>
+/// <returns></returns>
+bool BufferFrame::IsFixedProbably()
+{
+	return (mExclusive.load() || (mSharedBy.load() > 0));
 }
 
 /// <summary>
