@@ -2,8 +2,10 @@
 #ifndef BUFFER_FRAME_H
 #define BUFFER_FRAME_H
 
-#include <stdint.h>
 #include "utility/RWLock.h"
+
+#include <stdint.h>
+#include <atomic>
 
 // Forwards
 class BufferManager;
@@ -16,31 +18,31 @@ class BufferFrame
 	friend class BufferManager;
 public:
 	BufferFrame();
+	BufferFrame( const BufferFrame& bf );
 	~BufferFrame();
 
 	uint64_t GetPageId() const;
 	void* GetData() const;
 
-	bool IsLoaded() const;
 	bool IsDirty() const;
-	bool IsExclusive() const;
-	bool IsShared() const;
-	
 
 private:
 	// Status
-	bool mLoaded = false; // TODO: replace these with atomics
-	bool mDirty = false;
-	bool mExclusive = false;
-	uint32_t mShares = 0;
+	// These are conservatively atomic, we could probably get away with non-atomics,
+	// for exclusive, loaded and dirty (as these are only set when the buffer is locked for writing). 
+	// SharedBy has to be atomic, since it is changed when reading.
+	// The variables are mainly used for determining buffer eviction and unlock behavior
+	std::atomic<bool> mLoaded;
+	std::atomic<bool> mDirty;
+	std::atomic<bool> mExclusive;
+	std::atomic<uint32_t> mSharedBy;
 	uint64_t mPageId = 0;
 	RWLock mRWLock;
 
 	void* mData = nullptr;
 	// Locking/unlocking methods (this is not just a pure mirror, we add functionality)
 	bool TryLockWrite();
-	void LockWrite();
-	void LockRead();
+	void Lock(bool exclusive);
 	void Unlock();
 };
 

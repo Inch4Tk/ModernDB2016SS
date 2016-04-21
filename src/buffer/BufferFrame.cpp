@@ -5,7 +5,17 @@
 /// <summary>
 /// Initializes a new instance of the <see cref="BufferFrame"/> class.
 /// </summary>
-BufferFrame::BufferFrame()
+BufferFrame::BufferFrame() : mLoaded(false), mDirty(false), mExclusive(false), mSharedBy(0)
+{
+}
+
+/// <summary>
+/// Initializes a new instance of the <see cref="BufferFrame"/> class.
+/// </summary>
+/// <param name="">The .</param>
+BufferFrame::BufferFrame( const BufferFrame& bf ) : 
+	mLoaded( bf.mLoaded.load() ), mDirty( bf.mDirty.load() ), 
+	mExclusive( bf.mExclusive.load() ), mSharedBy( bf.mSharedBy.load() )
 {
 }
 
@@ -35,40 +45,12 @@ void* BufferFrame::GetData() const
 }
 
 /// <summary>
-/// Determines whether this instance is loaded.
-/// </summary>
-/// <returns></returns>
-bool BufferFrame::IsLoaded() const
-{
-	return mLoaded;
-}
-
-/// <summary>
 /// Determines whether this instance is dirty.
 /// </summary>
 /// <returns></returns>
 bool BufferFrame::IsDirty() const
 {
-	return mDirty;
-}
-
-
-/// <summary>
-/// Determines whether this instance is exclusive.
-/// </summary>
-/// <returns></returns>
-bool BufferFrame::IsExclusive() const
-{
-	return mExclusive;
-}
-
-/// <summary>
-/// Determines whether this instance is shared.
-/// </summary>
-/// <returns></returns>
-bool BufferFrame::IsShared() const
-{
-	return mShares > 0;
+	return mDirty.load();
 }
 
 /// <summary>
@@ -80,31 +62,31 @@ bool BufferFrame::TryLockWrite()
 	bool success = mRWLock.TryLockWrite();
 	if (success)
 	{
-		mExclusive = true; // TODO: replace with atomic if necessary
-		assert( mShares == 0 );
+		mExclusive.store(true);
+		assert( mSharedBy.load() == 0 );
 	}
 	return success;
 }
 
 /// <summary>
-/// Locks for writing. Also sets necessary state variables.
+/// Locks for writing if exclusive is true. Locks for reading (shared access among readers) if exclusive is false.
+/// Also sets necessary state variables.
 /// </summary>
-/// <returns></returns>
-void BufferFrame::LockWrite()
+/// <param name="exclusive">if set to <c>true</c> [exclusive].</param>
+void BufferFrame::Lock( bool exclusive )
 {
-	mRWLock.LockWrite();
-	mExclusive = true; // TODO: replace with atomic if necessary
-	assert( mShares == 0 );
-}
-
-/// <summary>
-/// Locks for reading (shared access among readers). Also sets necessary state variables.
-/// </summary>
-/// <returns></returns>
-void BufferFrame::LockRead()
-{
-	mRWLock.LockRead();
-	assert( !mExclusive );
+	if (exclusive)
+	{
+		mRWLock.LockWrite();
+		mExclusive.store( true );
+		assert( mSharedBy.load() == 0 );
+	}
+	else
+	{
+		mRWLock.LockRead();
+		++mSharedBy;
+		assert( !mExclusive.load() );
+	}
 }
 
 /// <summary>
@@ -114,6 +96,18 @@ void BufferFrame::LockRead()
 /// <returns></returns>
 void BufferFrame::Unlock()
 {
-	// TODO
+	if ( mExclusive.load() )
+	{
+		assert( mSharedBy.load() == 0 );
+		mExclusive.store( false );
+		mRWLock.UnlockWrite();
+	}
+	else
+	{
+		assert( !mExclusive.load() );
+		assert( mSharedBy.load() > 0 ); // Okay, this one is arguably suboptimal, since it does not guarantee anything for the next line
+		--mSharedBy;
+		mRWLock.UnlockRead();
+	}
 }
 
