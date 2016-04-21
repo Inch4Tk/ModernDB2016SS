@@ -151,14 +151,16 @@ void ExternalSort( const char* inputFilename, uint64_t size, const char* outputF
 						std::ofstream::binary | std::ofstream::trunc );
 		if ( !tmpoutput.is_open() || tmpoutput.fail() )
 		{
-			std::cerr << "Could not open temporary chunk file: " << outputName << std::endl;
+			std::cerr << "Could not open temporary chunk file: " << 
+				outputName << std::endl;
 			input.close();
 			CleanupTempFiles( tmpFilenames );
 			return;
 		}
 
 		// Write data
-		tmpoutput.write( reinterpret_cast<const char*>(&data[0]), data.size() * sizeof( uint64_t ) );
+		tmpoutput.write( reinterpret_cast<const char*>(&data[0]), 
+						 data.size() * sizeof( uint64_t ) );
 		if ( tmpoutput.fail() )
 		{
 			std::cerr << "An error occurred writing to " << outputName << std::endl;
@@ -170,7 +172,8 @@ void ExternalSort( const char* inputFilename, uint64_t size, const char* outputF
 
 		// Close tmp chunk streams
 		tmpoutput.close();
-		std::cout << "Finished sorting chunk " << curChunk + 1 << " of " << numChunks << " chunks" << std::endl;
+		std::cout << "Finished sorting chunk " << curChunk + 1 << " of " << 
+			numChunks << " chunks" << std::endl;
 	}
 	// Close input stream
 	input.close();
@@ -184,7 +187,8 @@ void ExternalSort( const char* inputFilename, uint64_t size, const char* outputF
 					   std::ofstream::binary | std::ofstream::trunc );
 	if ( !outputStream.is_open() )
 	{
-		std::cerr << "Could not open output file: " << outputFilename << std::endl;
+		std::cerr << "Could not open output file: " << 
+			outputFilename << std::endl;
 		CleanupTempFiles( tmpFilenames );
 		return;
 	}
@@ -193,11 +197,13 @@ void ExternalSort( const char* inputFilename, uint64_t size, const char* outputF
 	std::vector<std::ifstream*> chunkStreams;
 	for ( std::string tmpChunkFile : tmpFilenames )
 	{
-		std::ifstream* stream = new std::ifstream( tmpChunkFile, std::ifstream::in | std::ifstream::binary );
+		std::ifstream* stream = new std::ifstream( tmpChunkFile, 
+												   std::ifstream::in | std::ifstream::binary );
 		chunkStreams.push_back( stream );
 		if ( !chunkStreams.back()->is_open() )
 		{
-			std::cerr << "Could not open temporary chunk file: " << tmpChunkFile << std::endl;
+			std::cerr << "Could not open temporary chunk file: " << 
+				tmpChunkFile << std::endl;
 			outputStream.close();
 			CloseTempStreams( chunkStreams );
 			CleanupTempFiles( tmpFilenames );
@@ -237,7 +243,8 @@ void ExternalSort( const char* inputFilename, uint64_t size, const char* outputF
 				bool success = LoadChunk( chunkStreams[idx], cd, smallChunkUints );
 				if ( !success )
 				{
-					std::cerr << "An error occurred reading from temporary chunk file " << tmpFilenames[idx] << std::endl;
+					std::cerr << "An error occurred reading from temporary chunk file " << 
+						tmpFilenames[idx] << std::endl;
 					outputStream.close();
 					CloseTempStreams( chunkStreams );
 					CleanupTempFiles( tmpFilenames );
@@ -250,7 +257,8 @@ void ExternalSort( const char* inputFilename, uint64_t size, const char* outputF
 				smallestIdx = idx;
 				curSmallest = cd.front();
 			}
-			allChunksEmpty = allChunksEmpty && cd.empty() && chunkStreams[idx]->eof(); // Set empty bit if we are empty
+			allChunksEmpty = allChunksEmpty && cd.empty() && 
+				chunkStreams[idx]->eof(); // Set empty bit if we are empty
 			++idx;
 		}
 
@@ -259,11 +267,13 @@ void ExternalSort( const char* inputFilename, uint64_t size, const char* outputF
 		{
 			if ( outData.size() > 0 )
 			{
-				outputStream.write( reinterpret_cast<const char*>(&outData[0]), outData.size() * sizeof( uint64_t ) );
+				outputStream.write( reinterpret_cast<const char*>(&outData[0]), 
+									outData.size() * sizeof( uint64_t ) );
 			}
 			if ( outputStream.fail() )
 			{
-				std::cerr << "An error occurred writing to " << outputFilename << std::endl;
+				std::cerr << "An error occurred writing to " << 
+					outputFilename << std::endl;
 				outputStream.close();
 				CloseTempStreams( chunkStreams );
 				CleanupTempFiles( tmpFilenames );
@@ -280,10 +290,12 @@ void ExternalSort( const char* inputFilename, uint64_t size, const char* outputF
 		// Write back output buffer if it is full
 		if ( outData.size() >= smallChunkUints )
 		{
-			outputStream.write( reinterpret_cast<const char*>(&outData[0]), outData.size() * sizeof( uint64_t ) );
+			outputStream.write( reinterpret_cast<const char*>(&outData[0]), 
+								outData.size() * sizeof( uint64_t ) );
 			if ( outputStream.fail() )
 			{
-				std::cerr << "An error occurred writing to " << outputFilename << std::endl;
+				std::cerr << "An error occurred writing to " << 
+					outputFilename << std::endl;
 				outputStream.close();
 				CloseTempStreams( chunkStreams );
 				CleanupTempFiles( tmpFilenames );
@@ -299,7 +311,8 @@ void ExternalSort( const char* inputFilename, uint64_t size, const char* outputF
 
 	// Clean up temporary files
 	CleanupTempFiles( tmpFilenames );
-	std::cout << "Finished and cleaned up, you can find the sorted data in: " << outputFilename << std::endl;
+	std::cout << "Finished and cleaned up, you can find the sorted data in: " << 
+		outputFilename << std::endl;
 }
 
 /// <summary>
@@ -329,7 +342,8 @@ void AssertCorrectOrderSort( const char* outputFilename )
 			assert( nextNumber >= lastNumber ); // Just for nice exceptions
 			if ( nextNumber < lastNumber )
 			{
-				std::cerr << "Wrong order in output file detected, " << nextNumber << " is smaller than " << lastNumber << std::endl;
+				std::cerr << "Wrong order in output file detected, " << 
+					nextNumber << " is smaller than " << lastNumber << std::endl;
 				output.close();
 				return;
 			}
@@ -410,7 +424,8 @@ bool FileExists( const std::string& filename )
 	return (stat( filename.c_str(), &buffer ) == 0);
 #elif defined(PLATFORM_WIN)
 	DWORD dwAttrib = GetFileAttributes( filename.c_str() );
-	return (dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
+	return (dwAttrib != INVALID_FILE_ATTRIBUTES && 
+			!(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
 #else
 	LogError( "Could not detect a valid platform!" );
 	throw std::runtime_error("Error: Detect Platform");

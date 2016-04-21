@@ -111,7 +111,8 @@ BufferManager::~BufferManager()
 			catch (std::runtime_error& e)
 			{
 				LogError( e.what() );
-				LogError( "Caught runtime exception while writing back dirty files on shutdown. (PageId: " + 
+				LogError( "Caught runtime exception while writing " +
+						  std::string("back dirty files on shutdown. (PageId: ") + 
 						  std::to_string( f.GetPageId() ) + ")" );
 			}
 		}
@@ -144,10 +145,7 @@ BufferFrame& BufferManager::FixPage( uint64_t pageId, bool exclusive )
 	if (frame)
 	{
 		// We found the page, try to acquire our desired lock
-		if ( exclusive )
-			frame->LockWrite();
-		else
-			frame->LockRead();
+		frame->Lock( exclusive );
 		// If our page is not the correct page, we release the lock and do a recursive call to fix page
 		// (Reason is explained in overview)
 		if (frame->GetPageId() != pageId)
@@ -188,7 +186,7 @@ BufferFrame& BufferManager::FixPage( uint64_t pageId, bool exclusive )
 		if (!exclusive)
 		{
 			frame->Unlock();
-			frame->LockRead();
+			frame->Lock(false);
 			// In the extremely extremely unlikely case that the replacement algorithm
 			// chose this page to be evicted before we locked again (alg would need to do full 2 circles,
 			// and by chance end up with this page and acquire the lock, all of this before we get our own lock)
@@ -201,8 +199,6 @@ BufferFrame& BufferManager::FixPage( uint64_t pageId, bool exclusive )
 			}
 		}
 	}
-	
-
 	return *frame;
 }
 
@@ -213,7 +209,11 @@ BufferFrame& BufferManager::FixPage( uint64_t pageId, bool exclusive )
 /// <param name="isDirty">if set to <c>true</c> [is dirty].</param>
 void BufferManager::UnfixPage( BufferFrame& frame, bool isDirty )
 {
-
+	if (isDirty)
+	{
+		frame.mDirty = true; // TODO: atmoic
+	}
+	frame.Unlock();
 }
 
 /// <summary>
@@ -262,7 +262,8 @@ void BufferManager::LoadPage( BufferFrame& frame )
 	// Check for any errors reading (ignore eof errors, since these are normal if the page was not even created yet)
 	if ( segment.fail() && !segment.eof() )
 	{
-		LogError( "Read error in segment " + segmentName + " on page " + std::to_string( ids.second ) );
+		LogError( "Read error in segment " + segmentName + " on page " + 
+				  std::to_string( ids.second ) );
 		throw std::runtime_error( "Error: Reading File" );
 	}
 
@@ -300,7 +301,8 @@ void BufferManager::WritePage( BufferFrame& frame )
 	// Check for any errors reading
 	if ( segment.fail() )
 	{
-		LogError( "Write error in segment " + segmentName + " on page " + std::to_string( ids.second ) );
+		LogError( "Write error in segment " + segmentName + " on page " + 
+				  std::to_string( ids.second ) );
 		throw std::runtime_error( "Error: Writing File" );
 	}
 
