@@ -32,14 +32,17 @@ private:
 	// Status
 	bool mLoaded = false; // TODO: replace these with atomics
 	bool mDirty = false;
-	bool mFixed = false;
 	bool mExclusive = false;
 	uint32_t mShares = 0;
 	uint64_t mPageId = 0;
 	RWLock mRWLock;
 
-
 	void* mData = nullptr;
+	// Locking/unlocking methods (this is not just a pure mirror, we add functionality)
+	inline bool TryLockWrite();
+	inline void LockWrite();
+	inline void LockRead();
+	inline void Unlock();
 };
 
 #endif

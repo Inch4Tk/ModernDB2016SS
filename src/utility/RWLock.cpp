@@ -19,6 +19,15 @@ RWLock::~RWLock()
 }
 
 /// <summary>
+/// Tries to acquire write lock (now). Returns true if succeeded, false if failed.
+/// </summary>
+/// <returns></returns>
+bool RWLock::TryLockWrite()
+{
+	// TODO:
+}
+
+/// <summary>
 /// Locks for writing.
 /// </summary>
 void RWLock::LockWrite()
