@@ -17,10 +17,13 @@ set(MY_SRCS
 # Add a build executable
 add_executable(moderndb ${MY_SRCS})
 
-# Compiler warnings
+# Compiler warnings and pthreads
 if ( CMAKE_COMPILER_IS_GNUCC )
     # This is tested
     set_property( TARGET moderndb APPEND_STRING PROPERTY COMPILE_FLAGS -Wall )
+	set(THREADS_PREFER_PTHREAD_FLAG ON)
+	find_package(Threads REQUIRED)
+	target_link_libraries(moderndb Threads::Threads)
 endif ( CMAKE_COMPILER_IS_GNUCC )
 if ( MSVC )
     # This is untested

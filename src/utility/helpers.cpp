@@ -407,7 +407,7 @@ bool FileExists( const std::string& filename )
 {
 #ifdef PLATFORM_UNIX
 	struct stat buffer;
-	return (stat( name.c_str(), &buffer ) == 0);
+	return (stat( filename.c_str(), &buffer ) == 0);
 #elif defined(PLATFORM_WIN)
 	DWORD dwAttrib = GetFileAttributes( filename.c_str() );
 	return (dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));

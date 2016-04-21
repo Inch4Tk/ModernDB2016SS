@@ -4,10 +4,12 @@
 #include "utility/defines.h"
 #include "utility/macros.h"
 
+#include <stdio.h>
+#include <assert.h>
+#include <cstring>
 #include <string>
 #include <fstream>
 #include <exception>
-#include <assert.h>
 
 //////////////////////////////////////////////////////////////////////////
 // Overview (Thinking things through)

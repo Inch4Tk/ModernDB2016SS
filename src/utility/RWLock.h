@@ -5,7 +5,7 @@
 #include "utility/defines.h"
 
 #ifndef PLATFORM_WIN
-#include <sys/time.h>
+#include <pthread.h>
 #else
 #include <WinSock2.h>
 #endif
