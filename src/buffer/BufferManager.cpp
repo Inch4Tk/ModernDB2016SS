@@ -1,8 +1,8 @@
 #include "BufferManager.h"
 
-#include "helpers.h"
-#include "defines.h"
-#include "macros.h"
+#include "utility/helpers.h"
+#include "utility/defines.h"
+#include "utility/macros.h"
 
 #include <string>
 #include <fstream>

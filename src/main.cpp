@@ -1,6 +1,6 @@
 
-#include "defines.h"
-#include "helpers.h"
+#include "utility/defines.h"
+#include "utility/helpers.h"
 #include "buffer/BufferManager.h"
 
 #include <iostream>

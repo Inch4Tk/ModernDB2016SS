@@ -8,6 +8,9 @@
 #include <utility>
 #include <vector>
 
+/// <summary>
+/// Concurrent Buffer Manager, enabling loading from and flushing to disc.
+/// </summary>
 class BufferManager
 {
 public:

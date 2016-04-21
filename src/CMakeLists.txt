@@ -2,10 +2,10 @@
 # Set all sourcefiles
 set(MY_SRCS
 	main.cpp
-	macros.h
-	defines.h
-	helpers.h
-	helpers.cpp
+	utility/macros.h
+	utility/defines.h
+	utility/helpers.h
+	utility/helpers.cpp
 	buffer/BufferManager.h
 	buffer/BufferManager.cpp
 	buffer/BufferFrame.h
