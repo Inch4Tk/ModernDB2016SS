@@ -37,8 +37,16 @@ vagrant ssh
 * Windows 7, with Visual Studio 2015 (v140) (Cmake version 3.5.1)
 * Ubuntu LTE 14.04 VM, with gcc 4.8.4 (Cmake version 3.5.2)
 
-# Executing
-From build folder
+# Executing on Unix
+All commands are executed from target build folder.
+## Normal Execution
+This starts up the database (currently nothing happens, database starts and shuts down)
 ```
 ./moderndb
+```
+## Tests
+Runs all tests with googletest
+(IMPORTANT: This way you can check Assignment 2 output)
+```
+./moderndb_test
 ```
