@@ -336,8 +336,15 @@ void BufferManager::WritePage( BufferFrame& frame )
 	auto ids = SplitPageId( frame.GetPageId() );
 	// Open page file in binary mode
 	std::string segmentName = std::to_string( ids.first );
-	std::ofstream segment;
-	segment.open( segmentName, std::ifstream::out | std::ifstream::binary );
+	if ( !FileExists( segmentName ) )
+	{
+		// Quickly create an empty file
+		std::ofstream newfile;
+		newfile.open( segmentName, std::ofstream::out | std::fstream::binary );
+		newfile.close();
+	}
+	std::fstream segment;
+	segment.open( segmentName, std::fstream::in | std::fstream::out | std::fstream::binary );
 	if ( !segment.is_open() )
 	{
 		LogError( "Failed to open segment file " + segmentName );
