@@ -16,7 +16,7 @@ make all
 
 # Build project on Windows
 Download Cmake GUI. Point Source directory to project root folder (the one containing this Readme).
-Point Build directory to project_root/build or project_root/buildwin if you also plan to build for unix
+Point Build directory to project_root/buildwin
 Configure -> Generate
 
 # (Optional) Vagrant

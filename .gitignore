@@ -2,3 +2,4 @@ build/
 buildwin/
 .vagrant/
 vagrantsync/
+*.swp
