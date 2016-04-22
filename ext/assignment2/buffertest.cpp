@@ -1,3 +1,5 @@
+#include "buffer/BufferManager.h"
+
 #include <iostream>
 #include <vector>
 #include <stdlib.h>
@@ -29,11 +31,11 @@ static void* scan(void *arg) {
    while (!stop) {
       unsigned start = random()%(pagesOnDisk-10);
       for (unsigned page=start; page<start+10; page++) {
-         BufferFrame& bf = bm->fixPage(page, false);
-         unsigned newcount = reinterpret_cast<unsigned*>(bf.getData())[0];
+         BufferFrame& bf = bm->FixPage(page, false);
+         unsigned newcount = reinterpret_cast<unsigned*>(bf.GetData())[0];
          assert(counters[page]<=newcount);
          counters[page]=newcount;
-         bm->unfixPage(bf, false);
+         bm->UnfixPage(bf, false);
       }
    }
 
@@ -47,13 +49,13 @@ static void* readWrite(void *arg) {
    uintptr_t count = 0;
    for (unsigned i=0; i<100000/threadCount; i++) {
       bool isWrite = rand_r(&threadSeed[threadNum])%128<10;
-      BufferFrame& bf = bm->fixPage(randomPage(threadNum), isWrite);
+      BufferFrame& bf = bm->FixPage(randomPage(threadNum), isWrite);
 
       if (isWrite) {
          count++;
-         reinterpret_cast<unsigned*>(bf.getData())[0]++;
+         reinterpret_cast<unsigned*>(bf.GetData())[0]++;
       }
-      bm->unfixPage(bf, isWrite);
+      bm->UnfixPage(bf, isWrite);
    }
 
    return reinterpret_cast<void*>(count);
@@ -81,9 +83,9 @@ int main(int argc, char** argv) {
 
    // set all counters to 0
    for (unsigned i=0; i<pagesOnDisk; i++) {
-      BufferFrame& bf = bm->fixPage(i, true);
-      reinterpret_cast<unsigned*>(bf.getData())[0]=0;
-      bm->unfixPage(bf, true);
+      BufferFrame& bf = bm->FixPage(i, true);
+      reinterpret_cast<unsigned*>(bf.GetData())[0]=0;
+      bm->UnfixPage(bf, true);
    }
 
    // start scan thread
@@ -113,9 +115,9 @@ int main(int argc, char** argv) {
    // check counter
    unsigned totalCountOnDisk = 0;
    for (unsigned i=0; i<pagesOnDisk; i++) {
-      BufferFrame& bf = bm->fixPage(i,false);
-      totalCountOnDisk+=reinterpret_cast<unsigned*>(bf.getData())[0];
-      bm->unfixPage(bf, false);
+      BufferFrame& bf = bm->FixPage(i,false);
+      totalCountOnDisk+=reinterpret_cast<unsigned*>(bf.GetData())[0];
+      bm->UnfixPage(bf, false);
    }
    if (totalCount==totalCountOnDisk) {
       cout << "test successful" << endl;

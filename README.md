@@ -7,9 +7,10 @@ The submission commits are tagged. (Github release) If the current submission ta
 
 # Build project on UNIX
 Go into project root folder (terminal). Execute the following commands.
+(For validating assignments, check out the validating subitem of executing)
 ```
 mkdir -p build && cd build
-cmake -G "Unix Makefiles" -D CMAKE_BUILD_TYPE=Release ..
+cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release ..
 make all
 ```
 (Optional: Substitute Debug as CMAKE_BUILD_TYPE)
@@ -39,14 +40,25 @@ vagrant ssh
 
 # Executing on Unix
 All commands are executed from target build folder.
+
+## Validating Assignments
+To validate assignment 2 configure the cmake project with an additional flag like this:
+```
+mkdir -p build && cd build
+cmake -G "Unix Makefiles" -DASSIGN2_VALID=ON -DCMAKE_BUILD_TYPE=Release ..
+make all
+./assignment2 <pagesOnDisk> <pagesInRAM> <threads>
+```
+
 ## Normal Execution
 This starts up the database (currently nothing happens, database starts and shuts down)
 ```
 ./moderndb
 ```
+
 ## Tests
 Runs all tests with googletest
-(IMPORTANT: This way you can check Assignment 2 output)
+(IMPORTANT: This way you can also check a correct Assignment 2 output)
 ```
 ./moderndb_test
 ```

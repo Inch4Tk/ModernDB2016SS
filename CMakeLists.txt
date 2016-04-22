@@ -33,3 +33,8 @@ add_subdirectory(${CMAKE_BINARY_DIR}/googletest-src
 enable_testing()
 add_subdirectory(src)
 add_subdirectory(test)
+
+option(ASSIGN2_VALID "Builds the project with the provided assignment2 validation file." OFF)
+if(ASSIGN2_VALID)
+    add_subdirectory(ext/assignment2)
+endif()
