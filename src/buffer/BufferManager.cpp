@@ -38,7 +38,7 @@
 //         time it is called), this should be done as few times as possible and should be finished swiftly.
 // - Else: Start replacement/loading process
 // - Find free page with Page Replacement Algorithm
-// - Acquire write lock on page
+// - Acquire write lock on page (See Part about simultaneous loads farther down)
 // - Flush page if dirty
 // - Load the new page
 // - Acquire write exclusive lock on hash map
@@ -80,12 +80,49 @@
 //   the same element. This might also mean, that in very very rare cases we throw, even though
 //   there are still a few unfixed pages left over. (Only happens if a lot of concurrent replaces
 //   happen and almost all pages are fixed)
+//////////////////////////////////////////////////////////////////////////
+// Simultaneous loading/writing (disk IO)
+//////////////////////////////////////////////////////////////////////////
+// Problem: When loading/writing pages simultaneously bad things can happen
+// This can not be fixed by acquiring page locks alone: 
+// Thread 1 requests page 0, does not find in map -> starts loading page 0
+// Thread 2 requests page 0, does not find in map -> starts loading page 0
+// Thread 1 starts loading page 0
+// Thread 2 starts loading page 0
+// Thread 1 finished stores in map
+// Thread 2 finished but does not store in map( already there )
+// Thread 2 does his thing
+// Thread 2 unfixes
+// Thread 2's buffer page gets evicted
+// Thread 1 buffer gets removed from map without reason while he is actually still
+//          working( does not do him anything bad in general, just bad page reuse )
+// ->We still have a ghost page that is loaded but not in the map
+// This ghost page then gets written back with wrong values once it gets evicted, not good
+// Even worse scenario:
+// Thread 1 requests page 0, does not find in map -> starts loading page 0
+// Thread 2 requests page 0, does not find in map -> starts loading page 0
+// Thread 1 finished
+// Thread 1 makes changes to page
+// Thread 1 unfixes page
+// Thread 3 wants another page x
+// Thread 3 replacement algorithm evicts page 0
+// Thread 2 still loading -> Thread 3 and Thread 2 write/read from the same page on disk
+// Solution:
+// Create a number of I/O mutexes, varying between page count * 2 up to 100
+// The idea behind this is to index into these with the page id and prevent
+// simultaneous reading/writing of pages.
+// We can not write more than page count pages at the same time anyways
+// so we try to minimize collisions somewhat, but don't go too crazy.
+// The upper bound just prevents a uselessly high number of mutexes,
+// we are probably not going to write/read more than 100 different pages simultaneously
 
 /// <summary>
 /// Initializes a new instance of the <see cref="BufferManager" /> class.
 /// </summary>
 /// <param name="pageCount">The page count.</param>
-BufferManager::BufferManager( uint32_t pageCount ) : mPageCount( pageCount )
+BufferManager::BufferManager( uint32_t pageCount ) : mPageCount( pageCount ),
+mNotRequestedPages( 0 ), mPageMisses( 0 ), mDirtyWritebacks( 0 ), 
+mPageReplacementRetries( 0 ), mSimulPageLoadTries( 0 )
 {
 	assert( pageCount != 0 );
 	// Create and allocate huge chunk of consecutive memory
@@ -96,6 +133,11 @@ BufferManager::BufferManager( uint32_t pageCount ) : mPageCount( pageCount )
 	{
 		mFrames[i].mData = mBufferMemory + i * DB_PAGE_SIZE;
 	}
+	// Create I/O mutexes (see Overview: Simultaneous loading/writing)
+	for ( uint32_t i = 0; i < mPageCount * 2 && i < 100; ++i)
+	{
+		mFileIOLocks.push_back( new std::mutex() );
+	}
 }
 
 /// <summary>
@@ -103,7 +145,7 @@ BufferManager::BufferManager( uint32_t pageCount ) : mPageCount( pageCount )
 /// </summary>
 BufferManager::~BufferManager()
 {
-	// Write all dirty frames back to disc
+	// Write all dirty frames back to disk
 	for ( BufferFrame& f : mFrames )
 	{
 		// Handling fixed frames:
@@ -129,12 +171,17 @@ BufferManager::~BufferManager()
 		f.Unlock();
 	}
 	mFrames.clear();
+	for ( uint32_t i = 0; i < mPageCount * 2 && i < 100; ++i )
+	{
+		SDELETE(mFileIOLocks[i]);
+	}
+	mFileIOLocks.clear();
 
 	ADELETE( mBufferMemory );
 }
 
 /// <summary>
-/// Fixes the page the requested page. Will load the page from disc if necessary. 
+/// Fixes the page the requested page. Will load the page from disk if necessary. 
 /// Throws runtime error if no buffer space is available or if errors happen while loading/replacing pages.
 /// </summary>
 /// <param name="pageId">The page identifier.</param>
@@ -146,13 +193,13 @@ BufferFrame& BufferManager::FixPage( uint64_t pageId, bool exclusive )
 	BufferFrame* frame = nullptr;
 	// Compress the lock as much as possible, by releasing as soon as we get
 	// a pointer to our object (if that exists)
-	mHashMapLock.LockRead();
+	mHashMapLock.LockRead(); // <- Lock Read Hash Map
 	auto it = mLoadedFrames.find( pageId );
 	if ( it != mLoadedFrames.end() )
 	{
 		frame = it->second;
 	}
-	mHashMapLock.UnlockRead();
+	mHashMapLock.UnlockRead(); // <- Unlock Read Hash Map
 
 	if (frame)
 	{
@@ -160,62 +207,14 @@ BufferFrame& BufferManager::FixPage( uint64_t pageId, bool exclusive )
 		frame->Lock( exclusive );
 		// If our page is not the correct page, we release the lock and do a recursive call to fix page
 		// (Reason is explained in overview)
-		if (frame->GetPageId() != pageId)
-		{
-			frame->Unlock();
-			return FixPage( pageId, exclusive );
-		}
+		return *CheckSamePage( pageId, exclusive, frame );
 	}
-	else
-	{
-		// We did not find the page, start replacement algorithm
-		do 
-		{
-			frame = FindReplacementPage();
-			if ( !frame )
-			{
-				LogError( "Could not find any free or unfixed pages!" );
-				throw std::runtime_error( "Error: BufferManager ran out of space" );
-			}
-			// Try to lock, if that fails, we just start with a new page search, since
-			// we do not want to wait until the lock is free again.
-		} while ( !frame->TryLockWrite() );
-		// We got our write lock now we do all the actual replacement work
-		if ( frame->IsDirty() )
-		{
-			WritePage( *frame ); // Throws on fail
-		}
-		// Replace old id with new id and load
-		uint64_t oldId = frame->mPageId;
-		frame->mPageId = pageId;
-		LoadPage( *frame ); // Throws on fail
-		// Lock, replace, unlock
-		mHashMapLock.LockWrite();
-		mLoadedFrames.erase(oldId);
-		mLoadedFrames.insert( std::make_pair( pageId, frame ) );
-		mHashMapLock.UnlockWrite();
-		// Check what kind of lock we need on our page
-		if (!exclusive)
-		{
-			frame->Unlock();
-			frame->Lock(false);
-			// In the extremely extremely unlikely case that the replacement algorithm
-			// chose this page to be evicted before we locked again (alg would need to do full 2 circles,
-			// and by chance end up with this page and acquire the lock, all of this before we get our own lock)
-			// ... 
-			// well we basically have a problem, we could do a recursive FixPage call again:
-			if ( frame->GetPageId() != pageId )
-			{
-				frame->Unlock();
-				return FixPage( pageId, exclusive );
-			}
-		}
-	}
-	return *frame;
+	
+	return *FixPageReplacement(pageId, exclusive);
 }
 
 /// <summary>
-/// Unfixes the requested page. Will store the page to disc if it is dirty.
+/// Unfixes the requested page. Will store the page to disk if it is dirty.
 /// Storing will happen at some point before overwriting memory or on DB shutdown.
 /// </summary>
 /// <param name="frame">The frame.</param>
@@ -234,6 +233,98 @@ void BufferManager::UnfixPage( BufferFrame& frame, bool isDirty )
 		++frame.mEvictionScore;
 	}
 	frame.Unlock();
+}
+
+/// <summary>
+/// The page replacement part of fixing a page
+/// </summary>
+/// <param name="pageId">The page identifier.</param>
+/// <param name="exclusive">if set to <c>true</c> [exclusive].</param>
+/// <returns></returns>
+BufferFrame* BufferManager::FixPageReplacement( uint64_t pageId, bool exclusive )
+{
+	BufferFrame* frame = nullptr;
+	++mPageMisses;
+	// We did not find the page, start replacement algorithm
+	uint32_t pageReplaceTries = 0;
+	do
+	{
+		frame = FindReplacementPage();
+		if ( !frame )
+		{
+			LogError( "Could not find any free or unfixed pages!" );
+			throw std::runtime_error( "Error: BufferManager ran out of space" );
+		}
+		++pageReplaceTries;
+		// Try to lock, if that fails, we just start with a new page search, since
+		// we do not want to wait until the lock is free again.
+	} while ( !frame->TryLockWrite() ); // <- Lock replacement frame
+	mPageReplacementRetries += pageReplaceTries - 1;
+
+	// Next we have to verify we are the only person reading/writing to the page on disk
+	mFileIOLocks[pageId % mFileIOLocks.size()]->lock(); // <- Lock Page based I/O mutex
+													
+	// Now check if by chance some other thread else got this lock 
+	// on our page before us and the page is already in memory
+	// (even if we had to wait, this does not mean it was exactly for our page)
+	mHashMapLock.LockRead(); // <- Lock Read Hash Map
+	auto it = mLoadedFrames.find( pageId );
+	BufferFrame* altFrame = nullptr;
+	if ( it != mLoadedFrames.end() )
+	{
+		altFrame = it->second;
+	}
+	mHashMapLock.UnlockRead(); // <- Unlock Read Hash Map
+
+	if ( altFrame )
+	{
+		// Some other thread already loaded the page for us
+		++mSimulPageLoadTries;
+		frame->Unlock(); // <- Unlock replacement frame
+		mFileIOLocks[pageId % mFileIOLocks.size()]->unlock(); // <- Unlock Page based I/O mutex
+		altFrame->Lock( exclusive ); // <- Lock frame loaded by other thread
+		return CheckSamePage( pageId, exclusive, altFrame );
+	}
+
+	// We got our 2 write locks and nobody loaded before us 
+	// now we do all the actual replacement work
+	if ( frame->IsDirty() )
+	{
+		++mDirtyWritebacks;
+		WritePage( *frame ); // Throws on fail
+	}
+
+	// Replace old id with new id and load
+	uint64_t oldId = frame->mPageId;
+	frame->mPageId = pageId;
+	LoadPage( *frame ); // Throws on fail 
+
+	mHashMapLock.LockWrite(); // <- Lock Write Hash Map
+	mLoadedFrames.erase( oldId );
+	if ( mLoadedFrames.find( pageId ) != mLoadedFrames.end() )
+	{
+		// Assert against simultaneous loading
+		// Search should get compiled out in Release build, since if is empty
+		assert( false );
+	}
+	mLoadedFrames.insert( std::make_pair( pageId, frame ) );
+	mHashMapLock.UnlockWrite(); // <- Unlock Write Hash Map
+	mFileIOLocks[pageId % mFileIOLocks.size()]->unlock(); // <- Unlock Page based I/O mutex
+
+	// Check what kind of lock we need on our page
+	if ( !exclusive )
+	{
+		frame->Unlock(); // <- Swap lock replaced frame
+		frame->Lock( false ); // <- Swap lock replaced frame
+							  
+		// In the extremely extremely unlikely case that the replacement algorithm
+		// chose this page to be evicted before we locked again (alg would need to do full 2 circles,
+		// and by chance end up with this page and acquire the lock, all of this before we get our own lock)
+		// ... 
+		// well we basically have a problem, we could do a recursive FixPage call again:
+		return CheckSamePage( pageId, exclusive, frame );
+	}
+	return frame;
 }
 
 /// <summary>
@@ -369,6 +460,23 @@ void BufferManager::WritePage( BufferFrame& frame )
 
 	// Cleanup
 	segment.close();
+}
+
+/// <summary>
+/// Checks if the page is still our requested page, if it is not, we retry.
+/// </summary>
+/// <param name="pageId">The page identifier.</param>
+/// <param name="frame">The frame.</param>
+/// <returns></returns>
+BufferFrame* BufferManager::CheckSamePage( uint64_t pageId, bool exclusive, BufferFrame* frame )
+{
+	if ( frame->GetPageId() != pageId )
+	{
+		++mNotRequestedPages;
+		frame->Unlock();
+		return &FixPage( pageId, exclusive );
+	}
+	return frame;
 }
 
 /// <summary>
