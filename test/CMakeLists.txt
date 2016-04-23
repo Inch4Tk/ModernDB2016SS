@@ -1,7 +1,8 @@
 
 set(MY_TEST_SRCS
     alltests.cpp
-    derptest.cpp
+    buffer/buffertest.h
+    buffer/buffertest.cpp
     )
 
 include_directories(
