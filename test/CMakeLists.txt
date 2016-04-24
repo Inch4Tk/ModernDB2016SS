@@ -3,6 +3,7 @@ set(MY_TEST_SRCS
     alltests.cpp
     buffer/buffertest.cpp
     utility/helperstest.cpp
+    utility/rwlocktest.cpp
 )
 
 include_directories(
