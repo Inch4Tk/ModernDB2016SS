@@ -58,7 +58,10 @@ This starts up the database (currently nothing happens, database starts and shut
 
 ## Tests
 Runs all tests with googletest
-(IMPORTANT: This way you can also check a correct Assignment 2 output)
+(IMPORTANT: This way you can also check a correct Assignment 2 output. 
+However, tests appear to be significantly slower on unix than direct console calls of the validation file (may just be the VM though))
 ```
 ./moderndb_test
 ```
+Test compilation can be disabled by passing "-DCOMPILE_TESTS=OFF" as an
+additional flag to cmake

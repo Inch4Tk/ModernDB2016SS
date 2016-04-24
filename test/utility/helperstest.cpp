@@ -6,8 +6,8 @@
 
 TEST( FileExistsTest, NotExisting )
 {
-	bool res = FileExists( "asdfasdfdgtwasdfasdfsadfqwerqwer" );
-	EXPECT_EQ( false, res );
+	bool res = FileExists( std::string( "asdfasdfdgtwasdfasdfsadfqwerqwer" ) );
+	EXPECT_FALSE( res );
 }
 
 TEST( FileExistsTest, Existing )
@@ -19,6 +19,6 @@ TEST( FileExistsTest, Existing )
 	newfile.close();
 
 	bool res = FileExists( filename );
-	EXPECT_EQ( true, res );
+	EXPECT_TRUE( res );
 	std::remove( filename.c_str() );
 }

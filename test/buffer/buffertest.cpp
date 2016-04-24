@@ -1,5 +1,6 @@
 #include "buffer/BufferManager.h"
 #include "utility/macros.h"
+#include "utility/defines.h"
 
 #include "gtest/gtest.h"
 
@@ -92,7 +93,7 @@ void Scan( BufferManager* bm, uint32_t pagesOnDisk, bool& stop, uint32_t& fails 
 uint32_t RandomPage(float ranNum, uint32_t pages)
 {
 	float pageHalf = 0.5f * pages;
-	return static_cast<uint32_t>(max( 0.0f, ranNum * pageHalf + pageHalf )) % pages;
+	return static_cast<uint32_t>(std::max( 0.0f, ranNum * pageHalf + pageHalf )) % pages;
 }
 
 uint32_t ReadWrite( BufferManager* bm, uint32_t threadNum, uint32_t threadCount, uint32_t pagesOnDisk )

@@ -20,21 +20,28 @@ set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 set(CMAKE_CXX_STANDARD 11)
 set(CXX_STANDARD_REQUIRED ON)
 
-#Include GoogleTest external project
-configure_file(ext/gtest/CMakeLists.txt.in googletest-download/CMakeLists.txt)
-execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
-  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/googletest-download )
-execute_process(COMMAND ${CMAKE_COMMAND} --build .
-  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/googletest-download )
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-add_subdirectory(${CMAKE_BINARY_DIR}/googletest-src
-    ${CMAKE_BINARY_DIR}/googletest-build)
-
-enable_testing()
-add_subdirectory(src)
-add_subdirectory(test)
-
+# Options
+option(COMPILE_TESTS "Compiles the tests for the project" ON)
 option(ASSIGN2_VALID "Builds the project with the provided assignment2 validation file." OFF)
+
+# Include GoogleTest external project
+if(COMPILE_TESTS)
+    configure_file(ext/gtest/cmakelists.txt.in googletest-download/cmakelists.txt)
+    execute_process(command ${cmake_command} -g "${cmake_generator}" .
+        working_directory ${cmake_binary_dir}/googletest-download )
+    execute_process(command ${cmake_command} --build .
+        working_directory ${cmake_binary_dir}/googletest-download )
+    set(gtest_force_shared_crt on cache bool "" force)
+    add_subdirectory(${cmake_binary_dir}/googletest-src
+        ${cmake_binary_dir}/googletest-build)
+endif()
+
+add_subdirectory(src)
+if(COMPILE_TESTS)
+    enable_testing()
+    add_subdirectory(test)
+endif()
+
 if(ASSIGN2_VALID)
     add_subdirectory(ext/assignment2)
 endif()
