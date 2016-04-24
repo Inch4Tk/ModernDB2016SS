@@ -252,7 +252,7 @@ BufferFrame* BufferManager::FixPageReplacement( uint64_t pageId, bool exclusive 
 		frame = FindReplacementPage();
 		if ( !frame )
 		{
-			LogError( "Could not find any free or unfixed pages!" );
+			//LogError( "Could not find any free or unfixed pages!" );
 			throw std::runtime_error( "Error: BufferManager ran out of space" );
 		}
 		++pageReplaceTries;
@@ -431,7 +431,7 @@ void BufferManager::WritePage( BufferFrame& frame )
 	{
 		// Quickly create an empty file
 		std::ofstream newfile;
-		newfile.open( segmentName, std::ofstream::out | std::fstream::binary );
+		newfile.open( segmentName, std::ofstream::out | std::ofstream::binary );
 		newfile.close();
 	}
 	std::fstream segment;
@@ -480,7 +480,20 @@ BufferFrame* BufferManager::CheckSamePage( uint64_t pageId, bool exclusive, Buff
 }
 
 /// <summary>
-/// Splits the page identifier into SegmentId and PageId
+/// Merges the page identifier.
+/// </summary>
+/// <param name="segmentId">The segment identifier.</param>
+/// <param name="pageInSegment">The page in segment.</param>
+/// <returns></returns>
+uint64_t BufferManager::MergePageId( uint64_t segmentId, uint64_t pageInSegment )
+{
+	segmentId = (segmentId & 0xFFFFul) << 48;
+	pageInSegment = pageInSegment & 0x0000FFFFFFFFFFFFul;
+	return segmentId | pageInSegment;
+}
+
+/// <summary>
+/// Splits the page identifier into SegmentId and page in segment
 /// </summary>
 /// <param name="pageId">The page identifier.</param>
 /// <returns></returns>

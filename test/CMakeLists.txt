@@ -1,9 +1,8 @@
 
 set(MY_TEST_SRCS
     alltests.cpp
-    buffer/buffertest.h
     buffer/buffertest.cpp
-    )
+)
 
 include_directories(
     ${PROJECT_SOURCE_DIR}/src

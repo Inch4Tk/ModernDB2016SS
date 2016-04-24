@@ -23,6 +23,8 @@ public:
 	BufferFrame& FixPage( uint64_t pageId, bool exclusive );
 	void UnfixPage( BufferFrame& frame, bool isDirty );
 
+	static uint64_t MergePageId( uint64_t segmentId, uint64_t pageInSegment );
+	static std::pair<uint64_t, uint64_t> SplitPageId( uint64_t pageId );
 private:
 	uint32_t mPageCount;
 	// Memory and Buffer related
@@ -45,7 +47,6 @@ private:
 	void LoadPage( BufferFrame& frame );
 	void WritePage( BufferFrame& frame );
 	inline BufferFrame* CheckSamePage( uint64_t pageId, bool exclusive, BufferFrame* frame );
-	std::pair<uint64_t, uint64_t> SplitPageId( uint64_t pageId );
 };
 
 #endif
