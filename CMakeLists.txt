@@ -26,14 +26,14 @@ option(ASSIGN2_VALID "Builds the project with the provided assignment2 validatio
 
 # Include GoogleTest external project
 if(COMPILE_TESTS)
-    configure_file(ext/gtest/cmakelists.txt.in googletest-download/cmakelists.txt)
-    execute_process(command ${cmake_command} -g "${cmake_generator}" .
-        working_directory ${cmake_binary_dir}/googletest-download )
-    execute_process(command ${cmake_command} --build .
-        working_directory ${cmake_binary_dir}/googletest-download )
-    set(gtest_force_shared_crt on cache bool "" force)
-    add_subdirectory(${cmake_binary_dir}/googletest-src
-        ${cmake_binary_dir}/googletest-build)
+    configure_file(ext/gtest/CMakeLists.txt.in googletest-download/CMakeLists.txt)
+    execute_process(COMMAND ${CMAKE_COMMAND} -g "${CMAKE_GENERATOR}" .
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/googletest-download )
+    execute_process(COMMAND ${CMAKE_COMMAND} --build .
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/googletest-download )
+    set(gtest_force_shared_crt ON cache bool "" force)
+    add_subdirectory(${CMAKE_BINARY_DIR}/googletest-src
+        ${CMAKE_BINARY_DIR}/googletest-build)
 endif()
 
 add_subdirectory(src)
