@@ -11,6 +11,11 @@ set(MY_SRCS
 	buffer/BufferManager.cpp
 	buffer/BufferFrame.h
 	buffer/BufferFrame.cpp
+    buffer/SlottedPage.h
+    buffer/SlottedPage.cpp
+    buffer/SPSegment.h
+    buffer/SPSegment.cpp
+    relation/Record.h
 )
 
 # Add a library containing project source and link to main executable
