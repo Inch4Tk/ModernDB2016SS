@@ -16,6 +16,11 @@ set(MY_SRCS
     buffer/SPSegment.h
     buffer/SPSegment.cpp
     relation/Record.h
+    sql/Schema.h
+    sql/Schema.cpp
+    sql/SchemaParser.h
+    sql/SchemaParser.cpp
+    sql/SchemaTypes.h
 )
 
 # Add a library containing project source and link to main executable
