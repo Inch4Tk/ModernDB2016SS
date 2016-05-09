@@ -14,6 +14,8 @@ struct Schema {
          bool notNull;
          Attribute() : len(~0), notNull(true) {}
       };
+	  uint64_t segmentId;
+	  uint64_t pagecount;
       std::string name;
       std::vector<Schema::Relation::Attribute> attributes;
       std::vector<unsigned> primaryKey;
@@ -21,5 +23,8 @@ struct Schema {
    };
    std::vector<Schema::Relation> relations;
    std::string toString() const;
+
+   bool Serialize( std::vector<uint8_t>& data );
+   bool Deserialize( const std::vector<uint8_t>& data );
 };
 #endif

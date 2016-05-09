@@ -34,3 +34,24 @@ std::string Schema::toString() const {
    }
    return out.str();
 }
+
+
+/// <summary>
+/// Serializes the schema into the data.
+/// </summary>
+/// <param name="data">The data.</param>
+/// <returns>Success</returns>
+bool Schema::Serialize( std::vector<uint8_t>& data )
+{
+
+}
+
+/// <summary>
+/// Deserializes the specified data into the schema.
+/// </summary>
+/// <param name="data">The data.</param>
+/// <returns>Success</returns>
+bool Schema::Deserialize( const std::vector<uint8_t>& data )
+{
+
+}
