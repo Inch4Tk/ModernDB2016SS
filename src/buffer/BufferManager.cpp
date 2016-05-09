@@ -38,22 +38,17 @@
 //         time it is called), this should be done as few times as possible and should be finished swiftly.
 // - Else: Start replacement/loading process
 // - Find free page with Page Replacement Algorithm
-// - Acquire write lock on page (See Part about simultaneous loads farther down)
-// - Flush page if dirty
-// - Load the new page
+// - Acquire exclusive write lock on page
+// - Acquire I/O lock (See Part about simultaneous loads farther down)
 // - Acquire write exclusive lock on hash map
 // - Remove old page entry in hash map
-//   Note: This is kind of a micro optimization, which I am not 100% sure about. We could instead remove the page
-//         as soon as we lock it. This would need another cycle of hash map write lock/unlock.
-//         Waiting until now means, that other threads can find this page for a much longer time under its old id
-//         in the hash map. They will then try to acquire locks and wait for a long time. Once they end up in the lock
-//         possession, they will find out it is not their desired page and have then also have to reload the page from disk
-//         In these cases they will have a much longer wait time. The upside is that we can reduce the number of total
-//         lockdowns on the hash map by 50%. If we assume that the above case happens very rarely (that an evicted page
-//         gets loaded in the few extra milliseconds it will still be in the map), the micro optimization should yield
-//         good results on average.
-// - Insert new page entry
+// - Insert new page entry into hash map
+//   (We do the hash map replacement before loading/writing to disk, so other threads will see earlier that
+//    a page they need is either gone/loaded by a different thread)
 // - Release write exclusive lock on hash map
+// - Flush page if dirty
+// - Load the new page
+// - Release I/O lock
 // - If we just need read lock on page, release write lock and acquire read lock
 //////////////////////////////////////////////////////////////////////////
 // Unfixing a page:
@@ -107,14 +102,25 @@
 // Thread 3 wants another page x
 // Thread 3 replacement algorithm evicts page 0
 // Thread 2 still loading -> Thread 3 and Thread 2 write/read from the same page on disk
-// Solution:
-// Create a number of I/O mutexes, varying between page count * 2 up to 100
-// The idea behind this is to index into these with the page id and prevent
-// simultaneous reading/writing of pages.
-// We can not write more than page count pages at the same time anyways
-// so we try to minimize collisions somewhat, but don't go too crazy.
-// The upper bound just prevents a uselessly high number of mutexes,
-// we are probably not going to write/read more than 100 different pages simultaneously
+// Solution 1: (old solution, but discarded once I tried to cache filestreams, because too complex)
+//  Create a number of I/O mutexes, varying between page count * 2 up to 100
+//  The idea behind this is to index into these with the page id and prevent
+//  simultaneous reading/writing of pages.
+//  We can not write more than page count pages at the same time anyways
+//  so we try to minimize collisions somewhat, but don't go too crazy.
+//  The upper bound just prevents a uselessly high number of mutexes,
+//  we are probably not going to write/read more than 100 different pages simultaneously.
+//  First we lock a mutex protecting these mutexes, then we lock the 2 mutexes corresponding
+//  to the pages, then we unlock the mutex protecting the mutexes.
+//  We also need to build a 2 layer mutex structure protecting our segment filestream caches.
+// Solution 2: (new solution, marginally less performant, but creates a lot less headaches)
+//  Disk I/O in general can not be parallelized very well anyways:
+//  (http://stackoverflow.com/questions/1993699/how-to-parallelize-file-reading-and-writing)
+//  So, just lock down all file access with a single big mutex and make disk I/O serial. 
+//  This is preventing some small scale performance gains if we have multiple disks, 
+//  or if many threads waiting in line, for the mutex even though their page has 
+//  already been loaded.
+
 
 /// <summary>
 /// Initializes a new instance of the <see cref="BufferManager" /> class.
@@ -132,11 +138,6 @@ mPageReplacementRetries( 0 ), mSimulPageLoadTries( 0 )
 	for ( uint32_t i = 0; i < mFrames.size(); ++i)
 	{
 		mFrames[i].mData = mBufferMemory + i * DB_PAGE_SIZE;
-	}
-	// Create I/O mutexes (see Overview: Simultaneous loading/writing)
-	for ( uint32_t i = 0; i < mPageCount * 2 && i < 100; ++i)
-	{
-		mFileIOLocks.push_back( new std::mutex() );
 	}
 }
 
@@ -171,12 +172,13 @@ BufferManager::~BufferManager()
 		f.Unlock();
 	}
 	mFrames.clear();
-	for ( uint32_t i = 0; i < mPageCount * 2 && i < 100; ++i )
+	// Close filestreams
+	for ( std::pair<const uint64_t, std::fstream*>& mf : mFileStreams )
 	{
-		SDELETE(mFileIOLocks[i]);
+		SDELETE( mf.second );
 	}
-	mFileIOLocks.clear();
-
+	mFileStreams.clear();
+	// Delete page buffer memory
 	ADELETE( mBufferMemory );
 }
 
@@ -221,6 +223,7 @@ BufferFrame& BufferManager::FixPage( uint64_t pageId, bool exclusive )
 /// <param name="isDirty">if set to <c>true</c> [is dirty].</param>
 void BufferManager::UnfixPage( BufferFrame& frame, bool isDirty )
 {
+	assert( frame.mExclusive.load() || frame.mSharedBy > 0 );
 	assert( isDirty ? frame.mExclusive.load() : true ); // Iff dirty then exclusive
 	// Update dirtiness and our eviction score for page replacement alg
 	if ( isDirty )
@@ -261,8 +264,9 @@ BufferFrame* BufferManager::FixPageReplacement( uint64_t pageId, bool exclusive 
 	} while ( !frame->TryLockWrite() ); // <- Lock replacement frame
 	mPageReplacementRetries += pageReplaceTries - 1;
 
-	// Next we have to verify we are the only person reading/writing to the page on disk
-	mFileIOLocks[pageId % mFileIOLocks.size()]->lock(); // <- Lock Page based I/O mutex
+	// Next we have to verify we are the only person reading/writing to both pages on disk
+	uint64_t oldId = frame->mPageId;
+	mFileIOLock.lock(); // <- Lock I/O mutex
 													
 	// Now check if by chance some other thread else got this lock 
 	// on our page before us and the page is already in memory
@@ -275,30 +279,17 @@ BufferFrame* BufferManager::FixPageReplacement( uint64_t pageId, bool exclusive 
 		altFrame = it->second;
 	}
 	mHashMapLock.UnlockRead(); // <- Unlock Read Hash Map
-
 	if ( altFrame )
 	{
 		// Some other thread already loaded the page for us
 		++mSimulPageLoadTries;
 		frame->Unlock(); // <- Unlock replacement frame
-		mFileIOLocks[pageId % mFileIOLocks.size()]->unlock(); // <- Unlock Page based I/O mutex
+		mFileIOLock.unlock(); // <- Unlock Page based I/O mutex
 		altFrame->Lock( exclusive ); // <- Lock frame loaded by other thread
 		return CheckSamePage( pageId, exclusive, altFrame );
 	}
 
-	// We got our 2 write locks and nobody loaded before us 
-	// now we do all the actual replacement work
-	if ( frame->IsDirty() )
-	{
-		++mDirtyWritebacks;
-		WritePage( *frame ); // Throws on fail
-	}
-
-	// Replace old id with new id and load
-	uint64_t oldId = frame->mPageId;
-	frame->mPageId = pageId;
-	LoadPage( *frame ); // Throws on fail 
-
+	// Replace old frame entry in hash map with new
 	mHashMapLock.LockWrite(); // <- Lock Write Hash Map
 	mLoadedFrames.erase( oldId );
 	if ( mLoadedFrames.find( pageId ) != mLoadedFrames.end() )
@@ -309,7 +300,20 @@ BufferFrame* BufferManager::FixPageReplacement( uint64_t pageId, bool exclusive 
 	}
 	mLoadedFrames.insert( std::make_pair( pageId, frame ) );
 	mHashMapLock.UnlockWrite(); // <- Unlock Write Hash Map
-	mFileIOLocks[pageId % mFileIOLocks.size()]->unlock(); // <- Unlock Page based I/O mutex
+
+	// We got our 2 write locks and nobody loaded before us and we already replaced the page entry
+	// in the hashmap, now we do all the actual replacement work
+	if ( frame->IsDirty() )
+	{
+		++mDirtyWritebacks;
+		WritePage( *frame ); // Throws on fail
+	}
+
+	// Replace old id with new id in frame and load
+	frame->mPageId = pageId;
+	LoadPage( *frame ); // Throws on fail 
+
+	mFileIOLock.unlock(); // <- Unlock I/O mutex
 
 	// Check what kind of lock we need on our page
 	if ( !exclusive )
@@ -371,31 +375,75 @@ BufferFrame* BufferManager::FindReplacementPage()
 }
 
 /// <summary>
+/// Checks the filestream cache and returns the mutex + fstream pair. Creates a new pair if necessary
+/// </summary>
+/// <param name="segmentId">The segment identifier.</param>
+/// <param name="mtxSegment">The MTX segment.</param>
+void BufferManager::CheckFilestreamCache( uint64_t segmentId, std::fstream** segment )
+{
+	// Check if segment filestream exists already
+	auto fsit = mFileStreams.find( segmentId );
+	
+	// If the fstream does not exist, we create one and store
+	if ( fsit == mFileStreams.end() )
+	{
+		*segment = new std::fstream();
+		mFileStreams.insert( std::make_pair( segmentId, *segment ) );
+	}
+	else
+	{
+		*segment = fsit->second;
+	}
+}
+
+/// <summary>
+/// Opens the file in binary read write mode if the stream is not opened. Also creates the file if necessary.
+/// </summary>
+/// <param name="name">The name.</param>
+/// <param name="stream">The stream.</param>
+void BufferManager::MbOpenCreateFile( std::string& name, std::fstream& stream )
+{
+	if ( !stream.is_open() )
+	{
+		// Check existance
+		if ( !FileExists( name ) )
+		{
+			// Quickly create an empty file
+			std::ofstream newfile;
+			newfile.open( name, std::ofstream::out | std::ofstream::binary );
+			newfile.close();
+		}
+		// Open in binary mode
+		stream.open( name, std::fstream::in | std::fstream::out | std::fstream::binary );
+		if ( !stream.is_open() )
+		{
+			LogError( "Failed to open segment file " + name );
+			throw std::runtime_error( "Error: Opening File" );
+		}
+	}
+}
+
+/// <summary>
 /// Loads a page from harddrive. Throws on errors.
 /// </summary>
 /// <param name="pageId">The page identifier.</param>
 void BufferManager::LoadPage( BufferFrame& frame )
 {
+	// Zero out memory
+	memset( frame.mData, 0, DB_PAGE_SIZE );
+
+	// Get a filestream
 	auto ids = SplitPageId( frame.GetPageId() );
+	std::fstream* segmentPtr = nullptr;
+	CheckFilestreamCache( ids.first, &segmentPtr );
+	assert( segmentPtr );
 
-	// Open page file in binary mode
+	// Lock the filestream
+	// We do not have to watch out for changed filestreams, since we never
+	// close/remove/change any filestreams while the program is running
 	std::string segmentName = std::to_string( ids.first );
-	if (!FileExists(segmentName))
-	{
-		// The segment does not yet exist, we just pretend we loaded the page,
-		// this is valid behavior since there is no data yet.
-		memset( frame.mData, 0, DB_PAGE_SIZE ); // Zero out the memory
-		frame.mLoaded.store( true );
-		return;
-	}
-
-	std::ifstream segment;
-	segment.open( segmentName, std::ifstream::in | std::ifstream::binary );
-	if ( !segment.is_open() )
-	{
-		LogError( "Failed to open segment file " + segmentName );
-		throw std::runtime_error( "Error: Opening File" );
-	}
+	std::fstream& segment = *segmentPtr;
+	MbOpenCreateFile( segmentName, segment );
 
 	// Read data from input file
 	uint64_t pos = ids.second * DB_PAGE_SIZE;
@@ -405,7 +453,7 @@ void BufferManager::LoadPage( BufferFrame& frame )
 	// Check for any errors reading (ignore eof errors, since these are normal if the page was not even created yet)
 	if ( segment.fail() && !segment.eof() )
 	{
-		LogError( "Read error in segment " + segmentName + " on page " + 
+		LogError( "Read error in segment " + segmentName + " on page " +
 				  std::to_string( ids.second ) );
 		throw std::runtime_error( "Error: Reading File" );
 	}
@@ -413,9 +461,6 @@ void BufferManager::LoadPage( BufferFrame& frame )
 	// Set loaded bit and reset eviction score
 	frame.mLoaded.store( true );
 	frame.mEvictionScore.store( DB_EVICTION_COUNTER_START );
-
-	// Cleanup
-	segment.close();
 }
 
 /// <summary>
@@ -424,23 +469,18 @@ void BufferManager::LoadPage( BufferFrame& frame )
 /// <param name="pageId">The page identifier.</param>
 void BufferManager::WritePage( BufferFrame& frame )
 {
+	// Get a filestream
 	auto ids = SplitPageId( frame.GetPageId() );
-	// Open page file in binary mode
+	std::fstream* segmentPtr = nullptr;
+	CheckFilestreamCache( ids.first, &segmentPtr );
+	assert( segmentPtr );
+
+	// Lock the filestream
+	// We do not have to watch out for changed filestreams, since we never
+	// close/remove/change any filestreams while the program is running
 	std::string segmentName = std::to_string( ids.first );
-	if ( !FileExists( segmentName ) )
-	{
-		// Quickly create an empty file
-		std::ofstream newfile;
-		newfile.open( segmentName, std::ofstream::out | std::ofstream::binary );
-		newfile.close();
-	}
-	std::fstream segment;
-	segment.open( segmentName, std::fstream::in | std::fstream::out | std::fstream::binary );
-	if ( !segment.is_open() )
-	{
-		LogError( "Failed to open segment file " + segmentName );
-		throw std::runtime_error( "Error: Opening File" );
-	}
+	std::fstream& segment = *segmentPtr;
+	MbOpenCreateFile( segmentName, segment );
 
 	// Find position in output file
 	uint64_t pos = ids.second * DB_PAGE_SIZE;
@@ -457,9 +497,6 @@ void BufferManager::WritePage( BufferFrame& frame )
 
 	// Remove dirty flag from frame
 	frame.mDirty.store( false );
-
-	// Cleanup
-	segment.close();
 }
 
 /// <summary>

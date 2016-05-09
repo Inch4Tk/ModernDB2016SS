@@ -32,7 +32,8 @@ private:
 	std::vector<BufferFrame> mFrames;
 	RWLock mHashMapLock;
 	std::unordered_map<uint64_t, BufferFrame*> mLoadedFrames;
-	std::vector<std::mutex*> mFileIOLocks; // These are used to prevent parallel write/read to the same page on disk
+	std::mutex mFileIOLock;
+	std::unordered_map<uint64_t, std::fstream*> mFileStreams; // Filestream per segment
 
 	// Stats
 	std::atomic<uint64_t> mNotRequestedPages; // Number of times we received a not requested page
@@ -44,6 +45,8 @@ private:
 	// Helpers
 	BufferFrame* FixPageReplacement( uint64_t pageId, bool exclusive );
 	BufferFrame* FindReplacementPage();
+	void CheckFilestreamCache( uint64_t segmentId, std::fstream** mtxSegment );
+	void MbOpenCreateFile( std::string& name, std::fstream& stream );
 	void LoadPage( BufferFrame& frame );
 	void WritePage( BufferFrame& frame );
 	inline BufferFrame* CheckSamePage( uint64_t pageId, bool exclusive, BufferFrame* frame );
