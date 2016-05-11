@@ -20,6 +20,9 @@ public:
 	DBCore();
 	~DBCore();
 	
+	void AddRelationsFromFile( const std::string& filename );
+	void AddRelationsFromString( const std::string& sql );
+
 	BufferManager* GetBufferManager();
 	const Schema* GetSchema();
 

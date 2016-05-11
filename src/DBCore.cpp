@@ -1,6 +1,7 @@
 #include "DBCore.h"
 
 #include "utility/macros.h"
+#include "utility/helpers.h"
 #include "sql/SchemaParser.h"
 #include "buffer/BufferManager.h"
 
@@ -45,7 +46,7 @@ DBCore::~DBCore()
 	mMasterSchema.Serialize( schemaData );
 
 	// Compute number of pages necessary to store and put that as first entry to segment 0
-	uint32_t numpages = (schemaData.size() / DB_PAGE_SIZE) + 1;
+	uint32_t numpages = (static_cast<uint32_t>(schemaData.size()) / DB_PAGE_SIZE) + 1;
 	uint8_t* ptr = reinterpret_cast<uint8_t*>(&numpages);
 	uint8_t* startdata = reinterpret_cast<uint8_t*>(mSegment0[0]->GetData());
 	startdata[0] = ptr[0];
@@ -86,10 +87,60 @@ DBCore::~DBCore()
 }
 
 /// <summary>
+/// Adds relations to the masterschema from a file.
+/// </summary>
+/// <param name="filename">The filename.</param>
+void DBCore::AddRelationsFromFile( const std::string& filename )
+{
+	SchemaParser parser( filename, false );
+	std::unique_ptr<Schema> newSchema;
+	try
+	{
+		newSchema = parser.parse();
+	}
+	catch ( SchemaParserError* e)
+	{
+		LogError( e->what() );
+	}
+	// Merge into master
+	mMasterSchema.MergeSchema( *newSchema );
+}
+
+
+/// <summary>
+/// Adds relations to the masterschema from a string.
+/// </summary>
+/// <param name="sql">The SQL.</param>
+void DBCore::AddRelationsFromString( const std::string& sql )
+{
+	SchemaParser parser( sql, true );
+	std::unique_ptr<Schema> newSchema;
+	try
+	{
+		newSchema = parser.parse();
+	}
+	catch ( SchemaParserError* e )
+	{
+		LogError( e->what() );
+	}
+	// Merge into master
+	mMasterSchema.MergeSchema( *newSchema );
+}
+
+/// <summary>
 /// Gets the buffer manager.
 /// </summary>
 /// <returns></returns>
 BufferManager* DBCore::GetBufferManager()
 {
 	return mBufferManager;
+}
+
+/// <summary>
+/// Gets the schema.
+/// </summary>
+/// <returns></returns>
+const Schema* DBCore::GetSchema()
+{
+	return &mMasterSchema;
 }

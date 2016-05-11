@@ -63,7 +63,7 @@ void Schema::MergeSchema( Schema& other )
 
 	// Go over other schema and insert every relation, give out new segment id
 	// make sure to only insert relations with new names.
-	uint32_t curUnused = 0;
+	uint32_t curUnused = 1;
 	for ( Relation& ro : other.relations )
 	{
 		// Check name

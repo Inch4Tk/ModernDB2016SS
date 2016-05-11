@@ -1,9 +1,8 @@
 
 #include "utility/defines.h"
 #include "utility/helpers.h"
-#include "buffer/BufferManager.h"
-#include "sql/SchemaParser.h"
-
+#include "DBCore.h"
+#include "sql/Schema.h"
 #include <iostream>
 #include <string>
 #include <stdint.h>
@@ -21,10 +20,17 @@ int main( int argc, char* argv[] )
 		LogError( "usage: " + std::string( argv[0] ) + "<path_to_sql_file>");
 		return -1;
 	}
-	std::string sqlpath( argv[1] );
-	SchemaParser parser( sqlpath );
-	std::unique_ptr<Schema> schema = parser.parse();
+	DBCore core;
+	std::string sql = std::string( "create table employee (id integer, country_id char( 2 ), mgr_id integer, " ) +
+		"salery integer, first_name char( 20 ), middle char( 1 ), last_name char( 20 )," +
+		"primary key( id, country_id ));\n" +
+		"create table country(country_id char( 2 ), short_name char( 20 ), long_name char( 50 ), primary key( country_id ));\n" +
+		"create table department(id integer, primary key( id ), name char( 25 ), country_id char( 2 ));";
+	core.AddRelationsFromString( sql );
+
 	std::vector<uint8_t> data;
-	schema->Serialize( data );
+	const_cast<Schema*>(core.GetSchema())->Serialize( data );
+	Schema derp;
+	derp.Deserialize( &data[0] );
 	return 0;
 }
