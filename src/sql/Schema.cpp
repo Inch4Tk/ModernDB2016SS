@@ -172,3 +172,48 @@ void Schema::Deserialize( const std::vector<uint8_t>& data )
 {
 
 }
+
+/// <summary>
+/// Merges the other schema to this schema. This can be used to add new schemas to the masterschema. (e.g. Insert new relations)
+/// </summary>
+/// <param name="other">The other.</param>
+void Schema::MergeSchema( Schema& other )
+{
+	// TODO: locking
+	// Build two sets, one for names one for segments
+	std::set<std::string> names;
+	std::set<uint64_t> usedSegments;
+	for ( Relation& r : relations )
+	{
+		auto ins = names.insert( r.name );
+		assert( ins.second ); // Make sure all used names are unique
+		ins = usedSegments.insert( r.segmentId );
+		assert( ins.second ); // Make sure all used segments are unique
+	}
+
+	// Go over other schema and insert every relation, give out new segment id
+	// make sure to only insert relations with new names.
+	uint32_t curUnused = 0;
+	for ( Relation& ro : other.relations )
+	{
+		// Check name
+		if ( names.find( ro.name ) != names.end() )
+		{
+			LogError( "Schema, Relation with name: " + ro.name + " already exists, skipping." );
+			continue;
+		}
+		// Go to next unused segment
+		while ( usedSegments.find( curUnused ) != usedSegments.end() )
+		{
+			++curUnused;
+		}
+		// Insert into used names/segments
+		auto ins = names.insert( ro.name );
+		assert( ins.second ); // Make sure all used names are unique
+		ins = usedSegments.insert( curUnused );
+		assert( ins.second ); // Make sure all used segments are unique
+		// Do the actual merge
+		ro.segmentId = curUnused;
+		relations.push_back( ro );
+	}
+}

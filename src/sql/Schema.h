@@ -32,6 +32,7 @@ struct Schema {
 
    void Serialize( std::vector<uint8_t>& data );
    void Deserialize( const std::vector<uint8_t>& data );
+   void MergeSchema( Schema& other );
 
 private:
 	void SerializeRelation( Relation& r, std::vector<uint8_t>& data );
