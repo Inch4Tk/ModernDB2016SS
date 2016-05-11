@@ -33,7 +33,7 @@ private:
 	RWLock mHashMapLock;
 	std::unordered_map<uint64_t, BufferFrame*> mLoadedFrames;
 	std::mutex mFileIOLock;
-	std::unordered_map<uint64_t, std::fstream*> mFileStreams; // Filestream per segment
+	std::unordered_map<uint64_t, std::pair<std::fstream*, uint64_t>> mFileStreams; // Filestream per segment
 
 	// Stats
 	std::atomic<uint64_t> mNotRequestedPages; // Number of times we received a not requested page
@@ -45,7 +45,7 @@ private:
 	// Helpers
 	BufferFrame* FixPageReplacement( uint64_t pageId, bool exclusive );
 	BufferFrame* FindReplacementPage();
-	void CheckFilestreamCache( uint64_t segmentId, std::fstream** mtxSegment );
+	std::pair<std::fstream*, uint64_t>& CheckFilestreamCache( uint64_t segmentId );
 	void MbOpenCreateFile( std::string& name, std::fstream& stream );
 	void LoadPage( BufferFrame& frame );
 	void WritePage( BufferFrame& frame );

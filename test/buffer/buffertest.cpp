@@ -42,7 +42,7 @@ public:
 		// set all counters to 0
 		for ( uint32_t i = 0; i < GetParam().pagesOnDisk; i++ )
 		{
-			BufferFrame& bf = mgr->FixPage( i, true );
+			BufferFrame& bf = mgr->FixPage( BufferManager::MergePageId( DB_TEST_SEGMENT, i ), true );
 			reinterpret_cast<uint32_t*>(bf.GetData())[0] = 0;
 			mgr->UnfixPage( bf, true );
 		}
@@ -78,7 +78,7 @@ void Scan( BufferManager* bm, uint32_t pagesOnDisk, bool& stop, uint32_t& fails 
 		uint32_t start = randGen() % (pagesOnDisk - 10);
 		for ( uint32_t page = start; page < start + 10; page++ )
 		{
-			BufferFrame& bf = bm->FixPage( page, false );
+			BufferFrame& bf = bm->FixPage( BufferManager::MergePageId( DB_TEST_SEGMENT, page), false );
 			uint32_t newcount = reinterpret_cast<uint32_t*>(bf.GetData())[0];
 			if (newcount < counters[page])
 			{
@@ -107,7 +107,9 @@ uint32_t ReadWrite( BufferManager* bm, uint32_t threadNum, uint32_t threadCount,
 	for ( uint32_t i = 0; i < 100000 / threadCount; i++ )
 	{
 		bool isWrite = randGen() % 128 < 10;
-		BufferFrame& bf = bm->FixPage( RandomPage(normalDist(randGen), pagesOnDisk), isWrite );
+		BufferFrame& bf = bm->FixPage( 
+			BufferManager::MergePageId( DB_TEST_SEGMENT, 
+										RandomPage( normalDist( randGen ), pagesOnDisk ) ), isWrite );
 
 		if ( isWrite )
 		{
@@ -156,7 +158,7 @@ TEST_P(BufferTest, MultiThreadScanAndWrite)
 	uint32_t totalCountOnDisk = 0;
 	for ( uint32_t i = 0; i < GetParam().pagesOnDisk; i++ )
 	{
-		BufferFrame& bf = mgr->FixPage( i, false );
+		BufferFrame& bf = mgr->FixPage( BufferManager::MergePageId( DB_TEST_SEGMENT, i ), false );
 		totalCountOnDisk += reinterpret_cast<uint32_t*>(bf.GetData())[0];
 		mgr->UnfixPage( bf, false );
 	}
@@ -173,7 +175,7 @@ TEST_P( BufferTest, CreatePageOverload )
 	{
 		try
 		{
-			frames.push_back(&mgr->FixPage( i, true ));
+			frames.push_back(&mgr->FixPage( BufferManager::MergePageId( DB_TEST_SEGMENT, i ), true ));
 		}
 		catch (const std::runtime_error& e)
 		{

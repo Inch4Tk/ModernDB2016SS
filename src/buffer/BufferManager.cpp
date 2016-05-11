@@ -173,9 +173,9 @@ BufferManager::~BufferManager()
 	}
 	mFrames.clear();
 	// Close filestreams
-	for ( std::pair<const uint64_t, std::fstream*>& mf : mFileStreams )
+	for ( std::pair<const uint64_t, std::pair<std::fstream*, uint64_t>>& mf : mFileStreams )
 	{
-		SDELETE( mf.second );
+		SDELETE( mf.second.first );
 	}
 	mFileStreams.clear();
 	// Delete page buffer memory
@@ -184,6 +184,7 @@ BufferManager::~BufferManager()
 
 /// <summary>
 /// Fixes the page the requested page. Will load the page from disk if necessary. 
+/// Do not use segment 0. Segment 0 is reserved for schema data, and DBCore has a writelock on it. 
 /// Throws runtime error if no buffer space is available or if errors happen while loading/replacing pages.
 /// </summary>
 /// <param name="pageId">The page identifier.</param>
@@ -378,8 +379,8 @@ BufferFrame* BufferManager::FindReplacementPage()
 /// Checks the filestream cache and returns the mutex + fstream pair. Creates a new pair if necessary
 /// </summary>
 /// <param name="segmentId">The segment identifier.</param>
-/// <param name="mtxSegment">The MTX segment.</param>
-void BufferManager::CheckFilestreamCache( uint64_t segmentId, std::fstream** segment )
+/// <returns>Pair of filestream and segment</returns>
+std::pair<std::fstream*, uint64_t>& BufferManager::CheckFilestreamCache( uint64_t segmentId )
 {
 	// Check if segment filestream exists already
 	auto fsit = mFileStreams.find( segmentId );
@@ -387,12 +388,27 @@ void BufferManager::CheckFilestreamCache( uint64_t segmentId, std::fstream** seg
 	// If the fstream does not exist, we create one and store
 	if ( fsit == mFileStreams.end() )
 	{
-		*segment = new std::fstream();
-		mFileStreams.insert( std::make_pair( segmentId, *segment ) );
+		std::fstream* f = new std::fstream();
+		// Open file
+		std::string segmentName = std::to_string( segmentId );
+		MbOpenCreateFile( segmentName, *f );
+		// Find end of file
+		f->seekg( 0, std::ios::end );
+		std::streampos fsize = f->tellg();
+		auto p = std::make_pair( f, static_cast<uint64_t>(fsize) );
+		auto inserted = mFileStreams.insert( std::make_pair( segmentId, p ) );
+		if (inserted.second)
+		{
+			return inserted.first->second;
+		}
+		else
+		{
+			throw std::runtime_error( "Error: Filestream already cached. Segment id: " + segmentId );
+		}
 	}
 	else
 	{
-		*segment = fsit->second;
+		return fsit->second;
 	}
 }
 
@@ -434,26 +450,25 @@ void BufferManager::LoadPage( BufferFrame& frame )
 
 	// Get a filestream
 	auto ids = SplitPageId( frame.GetPageId() );
-	std::fstream* segmentPtr = nullptr;
-	CheckFilestreamCache( ids.first, &segmentPtr );
-	assert( segmentPtr );
-
-	// Lock the filestream
-	// We do not have to watch out for changed filestreams, since we never
-	// close/remove/change any filestreams while the program is running
-	std::string segmentName = std::to_string( ids.first );
-	std::fstream& segment = *segmentPtr;
-	MbOpenCreateFile( segmentName, segment );
-
+	std::pair<std::fstream*, uint64_t>& segment = CheckFilestreamCache( ids.first );
+	assert( segment.first );
+		
 	// Read data from input file
 	uint64_t pos = ids.second * DB_PAGE_SIZE;
-	segment.seekg( pos );
-	segment.read( reinterpret_cast<char*>(frame.mData), DB_PAGE_SIZE );
+	if (pos >= segment.second)
+	{
+		// Searched position is bigger than the file, just return empty
+		frame.mLoaded.store( true );
+		frame.mEvictionScore.store( DB_EVICTION_COUNTER_START );
+		return;
+	}
+	segment.first->seekg( pos );
+	segment.first->read( reinterpret_cast<char*>(frame.mData), DB_PAGE_SIZE );
 
 	// Check for any errors reading (ignore eof errors, since these are normal if the page was not even created yet)
-	if ( segment.fail() && !segment.eof() )
+	if ( segment.first->fail() && !segment.first->eof() )
 	{
-		LogError( "Read error in segment " + segmentName + " on page " +
+		LogError( "Read error in segment " + std::to_string( ids.first ) + " on page " +
 				  std::to_string( ids.second ) );
 		throw std::runtime_error( "Error: Reading File" );
 	}
@@ -471,28 +486,26 @@ void BufferManager::WritePage( BufferFrame& frame )
 {
 	// Get a filestream
 	auto ids = SplitPageId( frame.GetPageId() );
-	std::fstream* segmentPtr = nullptr;
-	CheckFilestreamCache( ids.first, &segmentPtr );
-	assert( segmentPtr );
-
-	// Lock the filestream
-	// We do not have to watch out for changed filestreams, since we never
-	// close/remove/change any filestreams while the program is running
-	std::string segmentName = std::to_string( ids.first );
-	std::fstream& segment = *segmentPtr;
-	MbOpenCreateFile( segmentName, segment );
-
+	std::pair<std::fstream*, uint64_t>& segment = CheckFilestreamCache( ids.first );
+	assert( segment.first );
+	
 	// Find position in output file
 	uint64_t pos = ids.second * DB_PAGE_SIZE;
-	segment.seekp( pos );
-	segment.write( reinterpret_cast<char*>(frame.mData), DB_PAGE_SIZE );
+	segment.first->seekp( pos );
+	segment.first->write( reinterpret_cast<char*>(frame.mData), DB_PAGE_SIZE );
 
 	// Check for any errors reading
-	if ( segment.fail() )
+	if ( segment.first->fail() )
 	{
-		LogError( "Write error in segment " + segmentName + " on page " + 
+		LogError( "Write error in segment " + std::to_string( ids.first ) + " on page " +
 				  std::to_string( ids.second ) );
 		throw std::runtime_error( "Error: Writing File" );
+	}
+
+	// If our currently written position was bigger or equal set the new filesize
+	if (pos >= segment.second)
+	{
+		segment.second = pos + DB_PAGE_SIZE;
 	}
 
 	// Remove dirty flag from frame
@@ -519,8 +532,8 @@ BufferFrame* BufferManager::CheckSamePage( uint64_t pageId, bool exclusive, Buff
 /// <summary>
 /// Merges the page identifier.
 /// </summary>
-/// <param name="segmentId">The segment identifier.</param>
-/// <param name="pageInSegment">The page in segment.</param>
+/// <param name="segmentId">The 16bit segment identifier.</param>
+/// <param name="pageInSegment">The 48bit page in segment.</param>
 /// <returns></returns>
 uint64_t BufferManager::MergePageId( uint64_t segmentId, uint64_t pageInSegment )
 {
@@ -533,7 +546,7 @@ uint64_t BufferManager::MergePageId( uint64_t segmentId, uint64_t pageInSegment 
 /// Splits the page identifier into SegmentId and page in segment
 /// </summary>
 /// <param name="pageId">The page identifier.</param>
-/// <returns></returns>
+/// <returns>16 bit segmentid, 48 bit page in segment</returns>
 std::pair<uint64_t, uint64_t> BufferManager::SplitPageId( uint64_t pageId )
 {
 	uint64_t segmentId = (pageId & 0xFFFF000000000000ul) >> 48;
