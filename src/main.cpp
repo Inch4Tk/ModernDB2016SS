@@ -24,6 +24,7 @@ int main( int argc, char* argv[] )
 	std::string sqlpath( argv[1] );
 	SchemaParser parser( sqlpath );
 	std::unique_ptr<Schema> schema = parser.parse();
-	Log( schema->toString() );
+	std::vector<uint8_t> data;
+	schema->Serialize( data );
 	return 0;
 }
