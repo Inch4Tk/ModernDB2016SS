@@ -35,6 +35,7 @@ struct Schema {
    void MergeSchema( Schema& other );
 
 private:
+	// Serialization
 	void SerializeRelation( Relation& r, std::vector<uint8_t>& data );
 	void SerializeAttribute( Relation::Attribute& a, std::vector<uint8_t>& data );
 
@@ -43,5 +44,15 @@ private:
 	void AppendToData( uint32_t toappend, std::vector<uint8_t>& data );
 	void AppendToData( uint64_t toappend, std::vector<uint8_t>& data );
 	void AppendToData( const std::string& toappend, std::vector<uint8_t>& data );
+
+	// Deserialization
+	void DeserializeRelation( const uint8_t* data );
+	void DeserializeAttribute( Relation& r, const uint8_t* data );
+
+	void ReadFromData( bool& toread, const uint8_t* data );
+	void ReadFromData( uint16_t& toread, const uint8_t* data );
+	void ReadFromData( uint32_t& toread, const uint8_t* data );
+	void ReadFromData( uint64_t& toread, const uint8_t* data );
+	void ReadFromData( std::string& toread, const uint8_t* data );
 };
 #endif
