@@ -21,6 +21,7 @@
 
 #define DB_PAGE_SIZE 16384u
 #define DB_EVICTION_COUNTER_START 0u
+#define DB_TEST_SEGMENT UINT16_MAX
 #include <stdint.h>
 #define TID uint64_t
 

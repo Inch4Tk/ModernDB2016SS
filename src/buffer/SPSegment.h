@@ -20,10 +20,10 @@ public:
 	~SPSegment();
 	
 	// Record management
-	TID SPSegment::Insert( const Record& r );
-	bool SPSegment::Remove( TID tid );
-	Record SPSegment::Lookup( TID tid );
-	bool SPSegment::Update( TID tid, const Record& r );
+	TID Insert( const Record& r );
+	bool Remove( TID tid );
+	Record Lookup( TID tid );
+	bool Update( TID tid, const Record& r );
 
 private:
 	BufferManager& mBufferManager;
