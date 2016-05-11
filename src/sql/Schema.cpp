@@ -212,17 +212,16 @@ void Schema::AppendToData( bool toappend, std::vector<uint8_t>& data )
 /// </summary>
 /// <param name="data">The data.</param>
 /// <returns>Success</returns>
-void Schema::Deserialize( const std::vector<uint8_t>& data )
+void Schema::Deserialize( const uint8_t* data )
 {
 	// Make sure schema is empty
 	relations.clear();
 	// Read relations
 	uint32_t numRelations = 0;
-	const uint8_t* dataptr = &data[0];
-	ReadFromData( numRelations, dataptr );
+	ReadFromData( numRelations, data );
 	for ( uint32_t i = 0; i < numRelations; ++i )
 	{
-		DeserializeRelation( dataptr );
+		DeserializeRelation( data );
 	}
 }
 
@@ -230,7 +229,7 @@ void Schema::Deserialize( const std::vector<uint8_t>& data )
 /// Deserializes the next relation (starting at next data). Appends the relation to schema.
 /// </summary>
 /// <param name="data">The data.</param>
-void Schema::DeserializeRelation( const uint8_t* data )
+void Schema::DeserializeRelation( const uint8_t*& data )
 {
 	relations.push_back( Relation("") );
 	Relation& r = relations.back();
@@ -251,7 +250,7 @@ void Schema::DeserializeRelation( const uint8_t* data )
 /// </summary>
 /// <param name="r">The r.</param>
 /// <param name="data">The data.</param>
-void Schema::DeserializeAttribute( Relation& r, const uint8_t* data )
+void Schema::DeserializeAttribute( Relation& r, const uint8_t*& data )
 {
 	r.attributes.push_back( Relation::Attribute() );
 	Relation::Attribute& a = r.attributes.back();
@@ -268,7 +267,7 @@ void Schema::DeserializeAttribute( Relation& r, const uint8_t* data )
 /// </summary>
 /// <param name="toread">The toread.</param>
 /// <param name="data">The data.</param>
-void Schema::ReadFromData( bool& toread, const uint8_t* data )
+void Schema::ReadFromData( bool& toread, const uint8_t*& data )
 {
 	toread = (*data == 0) ? false : true;
 	++data;
@@ -279,7 +278,7 @@ void Schema::ReadFromData( bool& toread, const uint8_t* data )
 /// </summary>
 /// <param name="toread">The toread.</param>
 /// <param name="data">The data.</param>
-void Schema::ReadFromData( uint16_t& toread, const uint8_t* data )
+void Schema::ReadFromData( uint16_t& toread, const uint8_t*& data )
 {
 	toread = *reinterpret_cast<const uint16_t*>(data);
 	data += 2;
@@ -290,7 +289,7 @@ void Schema::ReadFromData( uint16_t& toread, const uint8_t* data )
 /// </summary>
 /// <param name="toread">The toread.</param>
 /// <param name="data">The data.</param>
-void Schema::ReadFromData( uint32_t& toread, const uint8_t* data )
+void Schema::ReadFromData( uint32_t& toread, const uint8_t*& data )
 {
 	toread = *reinterpret_cast<const uint32_t*>(data);
 	data += 4;
@@ -301,7 +300,7 @@ void Schema::ReadFromData( uint32_t& toread, const uint8_t* data )
 /// </summary>
 /// <param name="toread">The toread.</param>
 /// <param name="data">The data.</param>
-void Schema::ReadFromData( uint64_t& toread, const uint8_t* data )
+void Schema::ReadFromData( uint64_t& toread, const uint8_t*& data )
 {
 	toread = *reinterpret_cast<const uint64_t*>(data);
 	data += 8;
@@ -312,7 +311,7 @@ void Schema::ReadFromData( uint64_t& toread, const uint8_t* data )
 /// </summary>
 /// <param name="toread">The toread.</param>
 /// <param name="data">The data.</param>
-void Schema::ReadFromData( std::string& toread, const uint8_t* data )
+void Schema::ReadFromData( std::string& toread, const uint8_t*& data )
 {
 	uint32_t strlen = 0;
 	ReadFromData( strlen, data );

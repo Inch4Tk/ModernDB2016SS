@@ -31,7 +31,7 @@ struct Schema {
    std::string toString() const;
 
    void Serialize( std::vector<uint8_t>& data );
-   void Deserialize( const std::vector<uint8_t>& data );
+   void Deserialize( const uint8_t* data );
    void MergeSchema( Schema& other );
 
 private:
@@ -46,13 +46,13 @@ private:
 	void AppendToData( const std::string& toappend, std::vector<uint8_t>& data );
 
 	// Deserialization
-	void DeserializeRelation( const uint8_t* data );
-	void DeserializeAttribute( Relation& r, const uint8_t* data );
+	void DeserializeRelation( const uint8_t*& data );
+	void DeserializeAttribute( Relation& r, const uint8_t*& data );
 
-	void ReadFromData( bool& toread, const uint8_t* data );
-	void ReadFromData( uint16_t& toread, const uint8_t* data );
-	void ReadFromData( uint32_t& toread, const uint8_t* data );
-	void ReadFromData( uint64_t& toread, const uint8_t* data );
-	void ReadFromData( std::string& toread, const uint8_t* data );
+	void ReadFromData( bool& toread, const uint8_t*& data );
+	void ReadFromData( uint16_t& toread, const uint8_t*& data );
+	void ReadFromData( uint32_t& toread, const uint8_t*& data );
+	void ReadFromData( uint64_t& toread, const uint8_t*& data );
+	void ReadFromData( std::string& toread, const uint8_t*& data );
 };
 #endif

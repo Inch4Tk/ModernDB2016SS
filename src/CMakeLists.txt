@@ -1,6 +1,8 @@
 
 # Set all sourcefiles
 set(MY_SRCS
+    DBCore.h
+    DBCore.cpp
 	utility/macros.h
 	utility/defines.h
 	utility/helpers.h
