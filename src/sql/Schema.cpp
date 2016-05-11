@@ -243,6 +243,15 @@ void Schema::DeserializeRelation( const uint8_t*& data )
 	{
 		DeserializeAttribute( r, data );
 	}
+	// Primary keys
+	uint32_t primaryKeysize = 0;
+	ReadFromData( primaryKeysize, data );
+	for ( uint32_t i = 0; i < primaryKeysize; ++i )
+	{
+		uint32_t primaryKey = 0;
+		ReadFromData( primaryKey, data );
+		r.primaryKey.push_back( primaryKey );
+	}
 }
 
 /// <summary>
