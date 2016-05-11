@@ -88,6 +88,7 @@ void Schema::MergeSchema( Schema& other )
 	}
 }
 
+
 /// <summary>
 /// Serializes the schema into the data.
 /// </summary>
@@ -326,4 +327,46 @@ void Schema::ReadFromData( std::string& toread, const uint8_t*& data )
 	ReadFromData( strlen, data );
 	toread = std::string( reinterpret_cast<const char*>(data), strlen );
 	data += strlen;
+}
+
+
+bool Schema::operator==( const Schema& other ) const
+{
+	bool same = relations.size() == other.relations.size();
+	if ( !same )
+		return false;
+	for ( uint32_t i = 0; i < relations.size(); ++i )
+	{
+		same = relations[i] == other.relations[i];
+		if ( !same )
+			return false;
+	}
+	return same;
+}
+
+bool Schema::Relation::operator==( const Schema::Relation& other ) const
+{
+	bool same = segmentId == other.segmentId && 
+		pagecount == other.pagecount && 
+		name == other.name;
+	if ( !same )
+		return false;
+	for ( uint32_t i = 0; i < attributes.size(); ++i )
+	{
+		same = attributes[i] == other.attributes[i];
+		if ( !same )
+			return false;
+	}
+	for ( uint32_t i = 0; i < primaryKey.size(); ++i )
+	{
+		same = primaryKey[i] == other.primaryKey[i];
+		if ( !same )
+			return false;
+	}
+	return same;
+}
+
+bool Schema::Relation::Attribute::operator==( const Schema::Relation::Attribute& other ) const
+{
+	return name == other.name && type == other.type && len == other.len && notNull == other.notNull;
 }

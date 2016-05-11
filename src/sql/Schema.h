@@ -18,6 +18,7 @@ struct Schema {
 		 uint32_t len;
          bool notNull;
          Attribute() : len(~0), notNull(true) {}
+		 bool operator==( const Schema::Relation::Attribute& other ) const;
       };
 	  uint64_t segmentId;
 	  uint64_t pagecount = 0;
@@ -26,6 +27,7 @@ struct Schema {
       std::vector<uint32_t> primaryKey;
       Relation(const std::string& name) : name(name) {
 	  }
+	  bool operator==( const Schema::Relation& other ) const;
    };
    std::vector<Schema::Relation> relations;
    std::string toString() const;
@@ -33,6 +35,8 @@ struct Schema {
    void Serialize( std::vector<uint8_t>& data );
    void Deserialize( const uint8_t* data );
    void MergeSchema( Schema& other );
+
+   bool operator==( const Schema& other ) const;
 
 private:
 	// Serialization
