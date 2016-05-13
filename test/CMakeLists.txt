@@ -34,7 +34,17 @@ target_link_libraries(${PROJECT_TEST_NAME} ${PROJECT_LIB_NAME})
 
 add_test(NAME db_tests COMMAND ${PROJECT_TEST_NAME})
 
-add_custom_command(TARGET ${PROJECT_TEST_NAME} POST_BUILD
-                   COMMAND ${CMAKE_COMMAND} -E copy
-                   ${CMAKE_SOURCE_DIR}/test/sql/testSchema.sql
-                   ${CMAKE_CURRENT_BINARY_DIR}/testSchema.sql)
+if (NOT WIN32)
+    add_custom_command(TARGET ${PROJECT_TEST_NAME} POST_BUILD
+                       COMMAND ${CMAKE_COMMAND} -E copy
+                       ${CMAKE_SOURCE_DIR}/test/sql/testSchema.sql
+                       ${CMAKE_BINARY_DIR}/testSchema.sql
+                       )
+else ()
+    add_custom_command(TARGET ${PROJECT_TEST_NAME} POST_BUILD
+                       COMMAND ${CMAKE_COMMAND} -E copy
+                       ${CMAKE_SOURCE_DIR}/test/sql/testSchema.sql
+                       ${CMAKE_CURRENT_BINARY_DIR}/testSchema.sql
+                       )
+endif (NOT WIN32)
+
