@@ -88,7 +88,6 @@ void Schema::MergeSchema( Schema& other )
 	}
 }
 
-
 /// <summary>
 /// Serializes the schema into the data.
 /// </summary>
@@ -344,6 +343,11 @@ bool Schema::operator==( const Schema& other ) const
 	return same;
 }
 
+bool Schema::operator!=( const Schema& other ) const
+{
+	return !(*this == other);
+}
+
 bool Schema::Relation::operator==( const Schema::Relation& other ) const
 {
 	bool same = segmentId == other.segmentId && 
@@ -366,7 +370,17 @@ bool Schema::Relation::operator==( const Schema::Relation& other ) const
 	return same;
 }
 
+bool Schema::Relation::operator!=( const Schema::Relation& other ) const
+{
+	return !(*this == other);
+}
+
 bool Schema::Relation::Attribute::operator==( const Schema::Relation::Attribute& other ) const
 {
 	return name == other.name && type == other.type && len == other.len && notNull == other.notNull;
+}
+
+bool Schema::Relation::Attribute::operator!=( const Schema::Relation::Attribute& other ) const
+{
+	return !(*this == other);
 }
