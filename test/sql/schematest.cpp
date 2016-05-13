@@ -2,6 +2,7 @@
 #include "sql/SchemaParser.h"
 #include "DBCore.h"
 #include "utility/macros.h"
+#include "utility/helpers.h"
 
 #include "gtest/gtest.h"
 

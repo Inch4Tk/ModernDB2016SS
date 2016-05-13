@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include "SchemaTypes.h"
+#include "utility/defines.h"
 
 /// <summary>
 /// Schema class. Database will always first try to load a currently existing schema as masterschema.
@@ -21,7 +22,7 @@ struct Schema {
 		 bool operator==( const Schema::Relation::Attribute& other ) const;
 		 bool operator!=( const Schema::Relation::Attribute& other ) const;
       };
-	  uint64_t segmentId;
+	  uint64_t segmentId = DB_TEST_SEGMENT; // If schema will be inserted to db, segment id will be set correctly
 	  uint64_t pagecount = 0;
       std::string name;
       std::vector<Schema::Relation::Attribute> attributes;
