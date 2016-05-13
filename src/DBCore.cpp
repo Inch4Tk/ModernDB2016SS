@@ -143,7 +143,7 @@ void DBCore::LoadSchemaFromSeg0()
 		mSegment0.push_back( nextF );
 		// Make sure that segment0 lies linearly mapped in memory
 		// This should be guaranteed, since we just created the bm
-		uint8_t* nextData = reinterpret_cast<uint8_t*>(f.GetData());
+		uint8_t* nextData = reinterpret_cast<uint8_t*>(nextF->GetData());
 		assert( (lastdata + DB_PAGE_SIZE) == nextData );
 		lastdata = nextData;
 	}
