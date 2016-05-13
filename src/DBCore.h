@@ -20,6 +20,7 @@ public:
 	DBCore();
 	~DBCore();
 	
+	void WipeDatabase();
 	void AddRelationsFromFile( const std::string& filename );
 	void AddRelationsFromString( const std::string& sql );
 
@@ -30,6 +31,10 @@ private:
 	Schema mMasterSchema;
 	BufferManager* mBufferManager;
 	std::vector<BufferFrame*> mSegment0; // Keeps all our writelocks on segment 0 pages
+
+	void DeleteBufferManager();
+	void LoadSchemaFromSeg0();
+	void WriteSchemaToSeg0();
 };
 
 #endif

@@ -432,3 +432,8 @@ bool FileExists( const std::string& filename )
 	return false;
 #endif
 }
+
+void FileDelete( const std::string& filename )
+{
+	std::remove( filename.c_str() );
+}
