@@ -433,7 +433,38 @@ bool FileExists( const std::string& filename )
 #endif
 }
 
+/// <summary>
+/// Deletes a file
+/// </summary>
+/// <param name="filename">The filename.</param>
 void FileDelete( const std::string& filename )
 {
 	std::remove( filename.c_str() );
+}
+
+/// <summary>
+/// Splits the tuple id.
+/// </summary>
+/// <param name="toSplit">To split.</param>
+/// <returns>First uint64 is the page id, second uint64 is the page id. Correctly shifted to the least significant bits</returns>
+std::pair<uint64_t, uint64_t> SplitTID( TID toSplit )
+{
+	uint64_t pageId = (toSplit & 0xFFFFFFFFFFFF0000ul) >> 16;
+	assert( pageId <= 0xFFFFFFFFFFFFul );
+	uint64_t slotId = toSplit & 0x000000000000FFFFul;
+	assert( slotId <= 0xFFFFul );
+	return std::make_pair( pageId, slotId );
+}
+
+/// <summary>
+/// Merges the tuple id.
+/// </summary>
+/// <param name="pageId">The page identifier. Ignores the first 16 bits.</param>
+/// <param name="slotId">The slot identifier. Ignores the first 48 bits.</param>
+/// <returns>First 48 bit (starting from most significant bit) will be the page id. Last 16 bit the slot id.</returns>
+TID MergeTID( uint64_t pageId, uint64_t slotId )
+{
+	pageId = (pageId & 0x0000FFFFFFFFFFFFul) << 16;
+	slotId = slotId & 0x000000000000FFFFul;
+	return pageId | slotId;
 }

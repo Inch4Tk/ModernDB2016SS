@@ -23,6 +23,6 @@
 #define DB_EVICTION_COUNTER_START 0u
 #define DB_TEST_SEGMENT UINT16_MAX
 #include <stdint.h>
-#define TID uint64_t
+#define TID uint64_t // 48 bit page id/ 16 bit slot id
 
 #endif
