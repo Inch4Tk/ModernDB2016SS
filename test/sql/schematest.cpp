@@ -53,7 +53,7 @@ TEST_F( SchemaTest, SchemaEquality )
 	EXPECT_NE( *sSql, *sSql3 );
 }
 
-TEST_F(SchemaTest, ParseFileStringEq)
+TEST_F( SchemaTest, ParseFileStringEq )
 {
 	std::string sql = std::string( "create table employee (id integer, country_id char( 2 ), mgr_id integer, " ) +
 		"salary integer, first_name char( 20 ), middle char( 1 ), last_name char( 20 )," +
@@ -70,3 +70,31 @@ TEST_F(SchemaTest, ParseFileStringEq)
 	EXPECT_EQ( *sSql, *sFile );
 }
 
+TEST_F( SchemaTest, AddRelationFileString )
+{
+	// Test if the masterschema from file is the same as from string
+	std::string filepath = "testSchema.sql";
+	core->AddRelationsFromFile( filepath );
+	Schema s = *core->GetSchema(); // Make copy
+	core->WipeDatabase();
+	std::string sql = std::string( "create table employee (id integer, country_id char( 2 ), mgr_id integer, " ) +
+		"salary integer, first_name char( 20 ), middle char( 1 ), last_name char( 20 )," +
+		"primary key( id, country_id ));\n" +
+		"create table country(country_id char( 2 ), short_name char( 20 ), long_name char( 50 ), primary key( country_id ));\n" +
+		"create table department(id integer, primary key( id ), name char( 25 ), country_id char( 2 ));";
+	core->AddRelationsFromString( sql );
+	EXPECT_EQ( s, *core->GetSchema() );
+}
+
+TEST_F( SchemaTest, SerializationDeserialization )
+{
+	std::string filepath = "testSchema.sql";
+	core->AddRelationsFromFile( filepath );
+	// Create a serialized data
+	std::vector<uint8_t> data;
+	const_cast<Schema*>(core->GetSchema())->Serialize( data );
+	// Unserialized data
+	Schema deserialized;
+	deserialized.Deserialize( &data[0] );
+	EXPECT_EQ( *core->GetSchema(), deserialized );	
+}
