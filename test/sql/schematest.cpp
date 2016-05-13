@@ -98,3 +98,22 @@ TEST_F( SchemaTest, SerializationDeserialization )
 	deserialized.Deserialize( &data[0] );
 	EXPECT_EQ( *core->GetSchema(), deserialized );	
 }
+
+TEST_F( SchemaTest, SerializationDeserializationMultipages )
+{
+	// Serialization/Deserialization and dbreloading test of schema with multiple pages of relations (>16KB)
+	std::string sql = std::string( "create table employee (id integer, country_id char( 2 ), mgr_id integer, " ) +
+		"salary integer, first_name char( 20 ), middle char( 1 ), last_name char( 20 ), ";
+	for ( uint32_t i = 0; i < 10000; ++i)
+	{
+		sql += "derpattr_" + std::to_string( i ) + " integer, ";
+	}
+	sql += "primary key( id, country_id ));";
+	core->AddRelationsFromString( sql );
+
+	// Create a serialized data
+	const Schema* olds = core->GetSchema();
+	SDELETE( core );
+	core = new DBCore();
+	EXPECT_EQ( *olds, *core->GetSchema() );
+}
