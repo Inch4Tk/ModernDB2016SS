@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 // Forwards
+class DBCore;
 class BufferManager;
 
 /// <summary>
@@ -16,7 +17,7 @@ class BufferManager;
 class SPSegment
 {
 public:
-	SPSegment( BufferManager& bm, uint64_t segmentId, uint64_t pagecount );
+	SPSegment( DBCore& core, BufferManager& bm, uint64_t segmentId );
 	~SPSegment();
 	
 	// Record management
@@ -26,9 +27,9 @@ public:
 	bool Update( TID tid, const Record& r );
 
 private:
+	DBCore& mCore;
 	BufferManager& mBufferManager;
 	uint64_t mSegmentId;
-	uint64_t mPagecount;
 };
 
 #endif

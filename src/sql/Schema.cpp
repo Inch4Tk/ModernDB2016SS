@@ -49,7 +49,6 @@ std::string Schema::toString() const {
 /// <param name="other">The other.</param>
 void Schema::MergeSchema( Schema& other )
 {
-	// TODO: locking
 	// Build two sets, one for names one for segments
 	std::set<std::string> names;
 	std::set<uint64_t> usedSegments;
@@ -86,6 +85,40 @@ void Schema::MergeSchema( Schema& other )
 		ro.segmentId = curUnused;
 		relations.push_back( ro );
 	}
+}
+
+/// <summary>
+/// Gets the relation with segment identifier. Throws if non existent.
+/// </summary>
+/// <param name="segmentId">The segment identifier.</param>
+/// <returns></returns>
+Schema::Relation& Schema::GetRelationWithSegmentId( uint64_t segmentId )
+{
+	for ( Schema::Relation& r : relations )
+	{
+		if ( r.segmentId == segmentId )
+		{
+			return r;
+		}
+	}
+	throw std::runtime_error( "Error: Getting non-existant relation." );
+}
+
+/// <summary>
+/// Gets the name of the relation with. Throws if non existent.
+/// </summary>
+/// <param name="name">The name.</param>
+/// <returns></returns>
+Schema::Relation& Schema::GetRelationWithName( std::string name )
+{
+	for ( Schema::Relation& r : relations )
+	{
+		if ( r.name == name )
+		{
+			return r;
+		}
+	}
+	throw std::runtime_error( "Error: Getting non-existant relation." );
 }
 
 /// <summary>

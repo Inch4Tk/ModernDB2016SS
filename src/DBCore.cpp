@@ -3,6 +3,7 @@
 #include "utility/macros.h"
 #include "utility/helpers.h"
 #include "sql/SchemaParser.h"
+#include "buffer/SPSegment.h"
 #include "buffer/BufferManager.h"
 
 #include <algorithm>
@@ -56,6 +57,7 @@ void DBCore::WipeDatabase()
 /// <param name="filename">The filename.</param>
 void DBCore::AddRelationsFromFile( const std::string& filename )
 {
+	// TODO: locking
 	SchemaParser parser( filename, false );
 	std::unique_ptr<Schema> newSchema;
 	try
@@ -67,7 +69,9 @@ void DBCore::AddRelationsFromFile( const std::string& filename )
 		LogError( e->what() );
 	}
 	// Merge into master
+	mSchemaLock.LockWrite();
 	mMasterSchema.MergeSchema( *newSchema );
+	mSchemaLock.UnlockWrite();
 }
 
 
@@ -88,7 +92,9 @@ void DBCore::AddRelationsFromString( const std::string& sql )
 		LogError( e->what() );
 	}
 	// Merge into master
+	mSchemaLock.LockWrite();
 	mMasterSchema.MergeSchema( *newSchema );
+	mSchemaLock.UnlockWrite();
 }
 
 /// <summary>
@@ -101,12 +107,103 @@ BufferManager* DBCore::GetBufferManager()
 }
 
 /// <summary>
-/// Gets the schema.
+/// Gets the schema. Does not guarantee any threadsafety on reading the schema.
 /// </summary>
 /// <returns></returns>
 const Schema* DBCore::GetSchema()
 {
 	return &mMasterSchema;
+}
+
+/// <summary>
+/// Gets the pages of a relation. Threadsafe iteration through schema. But number of pages can increase after return.
+/// Throws on non-existent relation
+/// </summary>
+/// <returns></returns>
+uint64_t DBCore::GetPagesOfRelation( uint64_t segmentId )
+{
+	mSchemaLock.LockRead();
+	try
+	{
+		Schema::Relation& r = mMasterSchema.GetRelationWithSegmentId( segmentId );
+	}
+	catch (std::runtime_error& e)
+	{
+		mSchemaLock.UnlockRead();
+		throw std::runtime_error( e.what );
+	}
+	mSchemaLock.UnlockRead();
+	return 0;
+}
+
+/// <summary>
+/// Adds x new pages to a relation.
+/// Throws on non-existent relation.
+/// </summary>
+/// <param name="segmentId">The segment identifier.</param>
+/// <param name="numPages">The number pages.</param>
+/// <returns></returns>
+uint64_t DBCore::AddPagesToRelation( uint64_t segmentId, uint64_t numPages )
+{
+	mSchemaLock.LockWrite();
+	try
+	{
+		Schema::Relation& r = mMasterSchema.GetRelationWithSegmentId( segmentId );
+		r.pagecount += numPages;
+	}
+	catch ( std::runtime_error& e )
+	{
+		mSchemaLock.UnlockWrite();
+		throw std::runtime_error( e.what );
+	}
+	mSchemaLock.UnlockWrite();
+	return 0;
+}
+
+/// <summary>
+/// Gets a new slotted pages segment instance operating on segment with segmentId.
+/// Getting a segment of a non-existent relation will throw.
+/// </summary>
+/// <param name="segmentId">The segment identifier.</param>
+/// <returns></returns>
+std::unique_ptr<SPSegment> DBCore::GetSPSegment( uint64_t segmentId )
+{
+	mSchemaLock.LockRead();
+	try
+	{
+		Schema::Relation& r = mMasterSchema.GetRelationWithSegmentId( segmentId );
+	}
+	catch ( std::runtime_error& e )
+	{
+		mSchemaLock.UnlockRead();
+		throw std::runtime_error( e.what );
+	}
+	mSchemaLock.UnlockRead();
+	return std::move( std::unique_ptr<SPSegment>( new SPSegment( *this, *mBufferManager, segmentId ) ) );
+}
+
+/// <summary>
+/// Gets a new slotted pages segment instance operating on the segment of the relation with the provided name.
+/// Getting a segment of a non-existent relation will throw.
+/// </summary>
+/// <param name="relationName">Name of the relation.</param>
+/// <returns></returns>
+std::unique_ptr<SPSegment> DBCore::GetSPSegment( std::string relationName )
+{
+	mSchemaLock.LockRead();
+	std::unique_ptr<SPSegment> s(nullptr);
+	try
+	{
+		Schema::Relation& r = mMasterSchema.GetRelationWithName( relationName );
+		s.reset( new SPSegment( *this, *mBufferManager, r.segmentId ) );
+	}
+	catch ( std::runtime_error& e )
+	{
+		mSchemaLock.UnlockRead();
+		throw std::runtime_error( e.what );
+	}
+	mSchemaLock.UnlockRead();
+	return std::move( s );
 }
 
 /// <summary>
@@ -130,6 +227,7 @@ void DBCore::DeleteBufferManager()
 /// </summary>
 void DBCore::LoadSchemaFromSeg0()
 {
+	mSchemaLock.LockWrite();
 	// Secure exclusive access to the first page, first segment
 	BufferFrame& f = mBufferManager->FixPage( 0, true );
 	mSegment0.push_back( &f );
@@ -150,6 +248,7 @@ void DBCore::LoadSchemaFromSeg0()
 	// Deserialize metadata
 	startdata += 4; // Skip number of segments
 	mMasterSchema.Deserialize( startdata );
+	mSchemaLock.UnlockWrite();
 }
 
 /// <summary>
@@ -157,6 +256,7 @@ void DBCore::LoadSchemaFromSeg0()
 /// </summary>
 void DBCore::WriteSchemaToSeg0()
 {
+	mSchemaLock.LockWrite();
 	// Serialize metadata/schema
 	std::vector<uint8_t> schemaData;
 	mMasterSchema.Serialize( schemaData );
@@ -190,4 +290,5 @@ void DBCore::WriteSchemaToSeg0()
 									  (i + 1) * DB_PAGE_SIZE - 4 );
 		memcpy( bufferdata, &schemaData[rangestart], rangeend - rangestart );
 	}
+	mSchemaLock.UnlockWrite();
 }

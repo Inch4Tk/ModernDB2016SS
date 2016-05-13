@@ -38,6 +38,8 @@ struct Schema {
    void Serialize( std::vector<uint8_t>& data );
    void Deserialize( const uint8_t* data );
    void MergeSchema( Schema& other );
+   Schema::Relation& GetRelationWithSegmentId( uint64_t segmentId ); // non-const, because we would have to return const relation
+   Schema::Relation& GetRelationWithName( std::string name); // non-const, because we would have to return const relation
 
    bool operator==( const Schema& other ) const;
    bool operator!=( const Schema& other ) const;

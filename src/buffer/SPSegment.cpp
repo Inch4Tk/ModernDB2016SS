@@ -1,14 +1,15 @@
 #include "SPSegment.h"
 
 #include "BufferManager.h"
+#include "DBCore.h"
 
 /// <summary>
 /// Initializes a new instance of the <see cref="SPSegment"/> class.
 /// </summary>
 /// <param name="segmentId">The segment identifier.</param>
 /// <param name="pagecount">The pagecount.</param>
-SPSegment::SPSegment( BufferManager& bm, uint64_t segmentId, uint64_t pagecount ) : 
-	mBufferManager(bm), mSegmentId(segmentId), mPagecount(pagecount)
+SPSegment::SPSegment( DBCore& core, BufferManager& bm, uint64_t segmentId ) :
+	mCore(core), mBufferManager(bm), mSegmentId(segmentId)
 {
 }
 
