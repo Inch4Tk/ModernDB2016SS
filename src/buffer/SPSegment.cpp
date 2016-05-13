@@ -1,6 +1,8 @@
 #include "SPSegment.h"
 
+#include "utility/helpers.h"
 #include "BufferManager.h"
+#include "SlottedPage.h"
 #include "DBCore.h"
 
 /// <summary>
@@ -50,8 +52,42 @@ bool SPSegment::Remove( TID tid )
 /// <returns></returns>
 Record SPSegment::Lookup( TID tid )
 {
-	//TODO
-	return Record(0, nullptr);
+	std::pair<uint64_t, uint64_t> pIdsId = SplitTID( tid );
+	BufferFrame& frame = mBufferManager.FixPage( BufferManager::MergePageId( mSegmentId, pIdsId.first ), false );
+	SlottedPage* page = reinterpret_cast<SlottedPage*>(frame.GetData());
+	
+	// Checks if tid is valid
+	if ( !page->IsInitialized() )
+	{
+		mBufferManager.UnfixPage( frame, false );
+		return Record( 0, nullptr );
+	}
+	SlottedPage::Slot* slot = page->GetSlot( pIdsId.second );
+	if ( !slot )
+	{
+		mBufferManager.UnfixPage( frame, false );
+		return Record( 0, nullptr );
+	}
+	if ( slot->IsFree() )
+	{
+		mBufferManager.UnfixPage( frame, false );
+		return Record( 0, nullptr );
+	}
+	// We found a page and a non-empty slot. Check the options in our slot
+	if ( slot->IsOtherRecordTID() )
+	{
+		mBufferManager.UnfixPage( frame, false );
+		return Lookup( slot->GetOtherRecordTID() ); // Recursive call to other page
+	}
+	uint32_t offset = slot->GetOffset();
+	uint32_t length = slot->GetLength();
+	if ( slot->IsFromOtherPage() )
+	{
+		offset += 8; // Currently we do nothing with the original tid, but it is there
+	}
+	Record r = Record( length, reinterpret_cast<uint8_t*>(frame.GetData()) + offset );
+	mBufferManager.UnfixPage( frame, false );
+	return r;
 }
 
 /// <summary>

@@ -9,7 +9,7 @@
 class Record
 {
 	uint32_t len;
-	char* data;
+	uint8_t* data;
 
 public:
 	// Assignment Operator: deleted
@@ -19,11 +19,11 @@ public:
 	// Move Constructor
 	Record( Record&& t );
 	// Constructor
-	Record( uint32_t len, const char* const ptr );
+	Record( uint32_t len, const uint8_t* const ptr );
 	// Destructor
 	~Record();
 	// Get pointer to data
-	const char* getData() const;
+	const uint8_t* getData() const;
 	// Get data size in bytes
 	uint32_t getLen() const;
 };
@@ -34,14 +34,14 @@ Record::Record( Record&& t ) : len( t.len ), data( t.data )
 	t.len = 0;
 }
 
-Record::Record( uint32_t len, const char* const ptr ) : len( len )
+Record::Record( uint32_t len, const uint8_t* const ptr ) : len( len )
 {
-	data = static_cast<char*>(malloc( len ));
+	data = static_cast<uint8_t*>(malloc( len ));
 	if ( data )
 		memcpy( data, ptr, len );
 }
 
-const char* Record::getData() const
+const uint8_t* Record::getData() const
 {
 	return data;
 }
