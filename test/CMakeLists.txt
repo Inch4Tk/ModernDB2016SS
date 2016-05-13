@@ -4,6 +4,7 @@ set(MY_TEST_SRCS
     buffer/buffertest.cpp
     utility/helperstest.cpp
     utility/rwlocktest.cpp
+    sql/schematest.cpp
 )
 
 include_directories(
@@ -32,3 +33,8 @@ endif ( MSVC )
 target_link_libraries(${PROJECT_TEST_NAME} ${PROJECT_LIB_NAME})
 
 add_test(NAME db_tests COMMAND ${PROJECT_TEST_NAME})
+
+add_custom_command(TARGET ${PROJECT_TEST_NAME} POST_BUILD
+                   COMMAND ${CMAKE_COMMAND} -E copy
+                   ${CMAKE_SOURCE_DIR}/test/sql/testSchema.sql
+                   ${CMAKE_CURRENT_BINARY_DIR}/testSchema.sql)

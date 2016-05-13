@@ -21,16 +21,16 @@ int main( int argc, char* argv[] )
 		return -1;
 	}
 	DBCore core;
-	std::string sql = std::string( "create table employee (id integer, country_id char( 2 ), mgr_id integer, " ) +
-		"salery integer, first_name char( 20 ), middle char( 1 ), last_name char( 20 )," +
-		"primary key( id, country_id ));\n" +
-		"create table country(country_id char( 2 ), short_name char( 20 ), long_name char( 50 ), primary key( country_id ));\n" +
-		"create table department(id integer, primary key( id ), name char( 25 ), country_id char( 2 ));";
-	core.AddRelationsFromString( sql );
-
-	std::vector<uint8_t> data;
+	/*core.AddRelationsFromString( std::string( "create table employee (id integer, country_id char( 2 ), mgr_id integer, " ) +
+								 "salery integer, first_name char( 20 ), middle char( 1 ), last_name char( 20 )," +
+								 "primary key( id, country_id ));\n" +
+								 "create table country(country_id char( 2 ), short_name char( 20 ), long_name char( 50 ), primary key( country_id ));\n" +
+								 "create table department(id integer, primary key( id ), name char( 25 ), country_id char( 2 ));"
+								 );*/
+	//core.WipeDatabase();
+	/*std::vector<uint8_t> data;
 	const_cast<Schema*>(core.GetSchema())->Serialize( data );
 	Schema derp;
-	derp.Deserialize( &data[0] );
+	derp.Deserialize( &data[0] );*/
 	return 0;
 }
