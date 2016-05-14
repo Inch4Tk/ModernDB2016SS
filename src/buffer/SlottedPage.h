@@ -24,6 +24,14 @@ public:
 		// This performs some unaligned reads, well we just don't support platforms that can't do that
 		// The other record TID is stored as a complement. This is useful, because it simplifies logic for our status byte.
 		// (Pages start as all 0, so all slots are automatically all free.)
+		
+		// Setters
+		void SetInPage();
+		void SetOffset( uint32_t newOffset );
+		void SetLength( uint32_t newLength );
+		void MakeFree();
+
+		// Getters
 		bool IsFree();
 		bool IsOtherRecordTID();
 		bool IsFromOtherPage();
@@ -32,8 +40,15 @@ public:
 		uint32_t GetLength();
 	};
 
+	// Setters
+	void Initialize();
+	void UsedFirstFreeSlot();
+	void SetDataStart( uint32_t newDataStart );
+
+	// Getters
 	bool IsInitialized();
 	uint16_t GetSlotCount();
+	uint16_t GetFirstFreeSlotId();
 	SlottedPage::Slot* GetFirstFreeSlot();
 	uint32_t GetDataStart();
 	uint32_t GetFreeContSpace();
@@ -42,7 +57,7 @@ private:
 	uint8_t mData[DB_PAGE_SIZE];
 	// Layout:
 	// 2 Byte status (currently is only 0=uninitialized, >1=initialized)
-	// 2 Byte slot count
+	// 2 Byte slot count (not decremented on removal, this shows all the slots potentially used)
 	// 2 Byte first free slot
 	// 2 Byte padding, so we get 8 byte aligned slots and aligned
 	// 4 Byte data start

@@ -30,6 +30,8 @@ private:
 	DBCore& mCore;
 	BufferManager& mBufferManager;
 	uint64_t mSegmentId;
+
+	uint64_t FindFreePage( uint32_t minSpace );
 };
 
 #endif

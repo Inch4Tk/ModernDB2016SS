@@ -5,6 +5,8 @@
 #include "SlottedPage.h"
 #include "DBCore.h"
 
+#include <cassert>
+
 /// <summary>
 /// Initializes a new instance of the <see cref="SPSegment"/> class.
 /// </summary>
@@ -30,7 +32,44 @@ SPSegment::~SPSegment()
 /// <returns></returns>
 TID SPSegment::Insert( const Record& r )
 {
-	//TODO
+	// Loop until we find a free page
+	while (true)
+	{
+		uint64_t pageId = FindFreePage( r.GetLen() );
+		BufferFrame& frame = mBufferManager.FixPage( BufferManager::MergePageId( mSegmentId, pageId ), true );
+		SlottedPage* page = reinterpret_cast<SlottedPage*>(frame.GetData());
+		// We could have an uninitialized page, we have to initialize that page first.
+		// Fresh pages will all pass the second if test, else we would have thrown in FindFreePage
+		if ( !page->IsInitialized() )
+		{
+			page->Initialize();
+			// TODO: tell schema to add another page to relation
+		}
+		if ( page->GetFreeContSpace() >= r.GetLen() )
+		{
+			// Everything worked we do our insert, release page and return our tid
+			TID newTID = MergeTID( pageId, page->GetFirstFreeSlotId() );
+			uint32_t insertDataBegin = page->GetDataStart() - r.GetLen();
+
+			// Find a slot and update slot
+			SlottedPage::Slot* slot = page->GetFirstFreeSlot();
+			slot->SetInPage();
+			slot->SetOffset( insertDataBegin );
+			slot->SetLength( r.GetLen() );
+			
+			// Update page header
+			page->UsedFirstFreeSlot();
+			page->SetDataStart( insertDataBegin );
+
+			mBufferManager.UnfixPage( frame, true );
+			return newTID;
+		}
+		else
+		{
+			mBufferManager.UnfixPage( frame, false );
+		}
+	}
+	assert( false );
 	return 0;
 }
 
@@ -100,4 +139,39 @@ bool SPSegment::Update( TID tid, const Record& r )
 {
 	//TODO
 	return true;
+}
+
+/// <summary>
+/// Finds a page with at least minSpace free continuous memory.
+/// </summary>
+/// <param name="minSpace">The minimum space.</param>
+/// <returns></returns>
+uint64_t SPSegment::FindFreePage( uint32_t minSpace )
+{
+	// Check if the space is bigger than Pagesize - (header + 1 slot)
+	// If that is the case we throw, since we currently don't support records bigger than a single page.
+	if ( minSpace > DB_PAGE_SIZE - 24 )
+	{
+		throw std::runtime_error( "Error: Don't support records bigger than a single page." );
+	}
+	// Linear search over pages
+	bool found = false;
+	uint64_t curPage = 0;
+	while ( !found )
+	{
+		BufferFrame& frame = mBufferManager.FixPage( BufferManager::MergePageId( mSegmentId, curPage ), false );
+		SlottedPage* page = reinterpret_cast<SlottedPage*>(frame.GetData());
+		uint32_t contSpace = page->GetFreeContSpace();
+		mBufferManager.UnfixPage( frame, false );
+		if ( !page->IsInitialized() || contSpace > minSpace )
+		{
+			// Page is either a fresh page, which of course means we dont yet have any values set
+			// this also means free space is not correct yet. But record has to fit, since
+			// else it would throw above.
+			return curPage;
+		}
+		++curPage;
+	}
+	assert( false );
+	return 0;
 }
