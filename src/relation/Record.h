@@ -23,9 +23,9 @@ public:
 	// Destructor
 	~Record();
 	// Get pointer to data
-	const uint8_t* getData() const;
+	const uint8_t* GetData() const;
 	// Get data size in bytes
-	uint32_t getLen() const;
+	uint32_t GetLen() const;
 };
 
 Record::Record( Record&& t ) : len( t.len ), data( t.data )
@@ -41,12 +41,12 @@ Record::Record( uint32_t len, const uint8_t* const ptr ) : len( len )
 		memcpy( data, ptr, len );
 }
 
-const uint8_t* Record::getData() const
+const uint8_t* Record::GetData() const
 {
 	return data;
 }
 
-uint32_t Record::getLen() const
+uint32_t Record::GetLen() const
 {
 	return len;
 }

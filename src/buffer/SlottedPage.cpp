@@ -19,30 +19,31 @@ uint16_t SlottedPage::GetSlotCount()
 }
 
 /// <summary>
-/// Gets the first free slot.
+/// Gets the first free slot. The slot will stay a free slot have to manually make not free afterwards.
 /// </summary>
 /// <returns></returns>
-uint16_t SlottedPage::GetFirstFreeSlot()
+SlottedPage::Slot* SlottedPage::GetFirstFreeSlot()
 {
-	return reinterpret_cast<uint16_t*>(mData)[2];
+	uint16_t slotId = reinterpret_cast<uint16_t*>(mData)[2];
+	return reinterpret_cast<SlottedPage::Slot*>(&mData[16 + slotId * 8]);
 }
 
 /// <summary>
 /// Gets the data start.
 /// </summary>
 /// <returns></returns>
-uint16_t SlottedPage::GetDataStart()
+uint32_t SlottedPage::GetDataStart()
 {
-	return reinterpret_cast<uint16_t*>(mData)[3];
+	return reinterpret_cast<uint32_t*>(mData)[2];
 }
 
 /// <summary>
-/// Gets the free space.
+/// Gets the free continuous space.
 /// </summary>
 /// <returns></returns>
-uint16_t SlottedPage::GetFreeSpace()
+uint32_t SlottedPage::GetFreeContSpace()
 {
-	return reinterpret_cast<uint16_t*>(mData)[4];
+	return reinterpret_cast<uint32_t*>(mData)[3];
 }
 
 /// <summary>
@@ -63,6 +64,10 @@ SlottedPage::Slot* SlottedPage::GetSlot( uint64_t slotId )
 /// <returns></returns>
 bool SlottedPage::Slot::IsFree()
 {
+	if ( IsOtherRecordTID() )
+	{
+		return false;
+	}
 	return mData[0] == 0 ? true : false;
 }
 
@@ -72,11 +77,11 @@ bool SlottedPage::Slot::IsFree()
 /// <returns></returns>
 bool SlottedPage::Slot::IsOtherRecordTID()
 {
-	return mData[0] == 0xff ? false : true;
+	return mData[0] == 0x00 ? false : true;
 }
 
 /// <summary>
-/// Determines whether [is from other page]. Status byte is set to 1.
+/// Determines whether [is from other page]. This is not valid if the slot contains another record's TID.
 /// </summary>
 /// <returns></returns>
 bool SlottedPage::Slot::IsFromOtherPage()
@@ -90,7 +95,9 @@ bool SlottedPage::Slot::IsFromOtherPage()
 /// <returns></returns>
 TID SlottedPage::Slot::GetOtherRecordTID()
 {
-	return *reinterpret_cast<uint64_t*>(mData);
+	TID t = *reinterpret_cast<uint64_t*>(mData);
+	t = ~t; // Other record tids are stored in complement form, see comments in slot
+	return t;
 }
 
 /// <summary>
