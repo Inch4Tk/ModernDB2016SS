@@ -1,5 +1,7 @@
 #include "SlottedPage.h"
 
+#include <cassert>
+
 /// <summary>
 /// Initializes this instance.
 /// </summary>
@@ -20,7 +22,7 @@ void SlottedPage::UsedFirstFreeSlot()
 	// Increment slot count of last free slot was at the end.
 	if ( slotId == GetSlotCount() )
 	{
-		++(reinterpret_cast<uint16_t*>(mData)[1]);
+		++(reinterpret_cast<uint16_t*>(mData)[1]); // slot count
 	}
 
 	bool foundFreeSlot = false;
@@ -28,9 +30,9 @@ void SlottedPage::UsedFirstFreeSlot()
 	{
 		++slotId;
 		SlottedPage::Slot* slot = GetSlot( slotId );
-		if (slot->IsFree())
+		if (!slot || slot->IsFree())
 		{
-			reinterpret_cast<uint16_t*>(mData)[2] = slotId;
+			reinterpret_cast<uint16_t*>(mData)[2] = slotId; // first slot id
 			foundFreeSlot = true;
 		}
 	} while ( !foundFreeSlot );
@@ -45,7 +47,7 @@ void SlottedPage::SetFirstFreeSlot( uint64_t slotId )
 {
 	if ( static_cast<uint16_t>(slotId) < GetFirstFreeSlotId() )
 	{
-		reinterpret_cast<uint16_t*>(mData)[2] = static_cast<uint16_t>(slotId);
+		reinterpret_cast<uint16_t*>(mData)[2] = static_cast<uint16_t>(slotId); // first slot id
 		// We could also remove unused slots at the end to reduce slotcount.
 		// But we will reuse these slots anyway later.
 	}
@@ -57,9 +59,10 @@ void SlottedPage::SetFirstFreeSlot( uint64_t slotId )
 /// <param name="newDataStart">The new data start.</param>
 void SlottedPage::SetDataStart( uint32_t newDataStart )
 {
-	reinterpret_cast<uint32_t*>(mData)[3] = newDataStart;
-	uint32_t freeSpace = newDataStart - 16 - GetSlotCount() * 8;
-	reinterpret_cast<uint32_t*>(mData)[4] = freeSpace;
+	assert( newDataStart >= static_cast<uint32_t>(16 + (GetSlotCount() + 0) * 8) );
+	reinterpret_cast<uint32_t*>(mData)[2] = newDataStart;
+	uint32_t freeSpace = newDataStart - 16 - (GetSlotCount() + 0) * 8; // Always reserve 1 extra slot
+	reinterpret_cast<uint32_t*>(mData)[3] = freeSpace;
 }
 
 /// <summary>
@@ -68,7 +71,10 @@ void SlottedPage::SetDataStart( uint32_t newDataStart )
 /// <param name="slotId">The slot identifier.</param>
 void SlottedPage::FreeSlot( uint64_t slotId )
 {
-	GetSlot( slotId )->MakeFree();
+	SlottedPage::Slot* slot = GetSlot( slotId );
+	if ( !slot )
+		return;
+	slot->MakeFree();
 	SetFirstFreeSlot( slotId );
 }
 

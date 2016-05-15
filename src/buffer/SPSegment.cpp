@@ -45,10 +45,12 @@ TID SPSegment::Insert( const Record& r )
 			page->Initialize();
 			mCore.AddPagesToRelation( mSegmentId, 1 );
 		}
-		if ( page->GetFreeContSpace() >= r.GetLen() )
+		if ( page->GetFreeContSpace() >= r.GetLen() + 8 )
 		{
 			// Everything worked we do our insert, release page and return our tid
 			TID newTID = MergeTID( pageId, page->GetFirstFreeSlotId() );
+			assert( page->GetDataStart() > page->GetFreeContSpace() );
+			assert( page->GetDataStart() >= r.GetLen() + 16 + 8 * (page->GetSlotCount() + 1) );
 			uint32_t insertDataBegin = page->GetDataStart() - r.GetLen();
 
 			// Find a slot and update slot
@@ -256,15 +258,15 @@ uint64_t SPSegment::FindFreePage( uint32_t minSpace )
 	{
 		BufferFrame& frame = mBufferManager.FixPage( BufferManager::MergePageId( mSegmentId, curPage ), false );
 		SlottedPage* page = reinterpret_cast<SlottedPage*>(frame.GetData());
-		uint32_t contSpace = page->GetFreeContSpace();
-		mBufferManager.UnfixPage( frame, false );
-		if ( !page->IsInitialized() || contSpace > minSpace )
+		if ( !page->IsInitialized() || page->GetFreeContSpace() >= minSpace + 8 )
 		{
 			// Page is either a fresh page, which of course means we dont yet have any values set
 			// this also means free space is not correct yet. But record has to fit, since
 			// else it would throw above.
+			mBufferManager.UnfixPage( frame, false );
 			return curPage;
 		}
+		mBufferManager.UnfixPage( frame, false );
 		++curPage;
 	}
 	assert( false );
