@@ -1,3 +1,4 @@
+#pragma once
 #ifndef H_Record_HPP
 #define H_Record_HPP
 
@@ -27,33 +28,4 @@ public:
 	// Get data size in bytes
 	uint32_t GetLen() const;
 };
-
-Record::Record( Record&& t ) : len( t.len ), data( t.data )
-{
-	t.data = nullptr;
-	t.len = 0;
-}
-
-Record::Record( uint32_t len, const uint8_t* const ptr ) : len( len )
-{
-	data = static_cast<uint8_t*>(malloc( len ));
-	if ( data )
-		memcpy( data, ptr, len );
-}
-
-const uint8_t* Record::GetData() const
-{
-	return data;
-}
-
-uint32_t Record::GetLen() const
-{
-	return len;
-}
-
-Record::~Record()
-{
-	free( data );
-}
-
 #endif

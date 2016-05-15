@@ -1,3 +1,4 @@
+#pragma once
 #ifndef SCHEMA_PARSER_H
 #define SCHEMA_PARSER_H
 

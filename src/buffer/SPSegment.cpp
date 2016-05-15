@@ -285,7 +285,7 @@ bool SPSegment::InsertLinked( TID backlink, const Record& r )
 	memcpy( &data[8], r.GetData(), r.GetLen() );
 
 	// Create copyrecord with backlink tid prepended
-	Record copyR = Record( data.size(), &data[0] );
+	Record copyR = Record( static_cast<uint32_t>(data.size()), &data[0] );
 
 	// Insert this one with normal insert
 	TID newTID = Insert( copyR );

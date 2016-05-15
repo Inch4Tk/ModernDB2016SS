@@ -4,7 +4,7 @@
 
 #include "sql/Schema.h"
 #include "utility/defines.h"
-
+#include "utility/RWLock.h"
 #include <memory>
 #include <stdint.h>
 

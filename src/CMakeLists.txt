@@ -18,6 +18,7 @@ set(MY_SRCS
     buffer/SPSegment.h
     buffer/SPSegment.cpp
     relation/Record.h
+    relation/Record.cpp
     sql/Schema.h
     sql/Schema.cpp
     sql/SchemaParser.h

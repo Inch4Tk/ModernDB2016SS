@@ -130,7 +130,7 @@ uint64_t DBCore::GetPagesOfRelation( uint64_t segmentId )
 	catch (std::runtime_error& e)
 	{
 		mSchemaLock.UnlockRead();
-		throw std::runtime_error( e.what );
+		throw std::runtime_error( e.what() );
 	}
 	mSchemaLock.UnlockRead();
 	return 0;
@@ -154,7 +154,7 @@ uint64_t DBCore::AddPagesToRelation( uint64_t segmentId, uint64_t numPages )
 	catch ( std::runtime_error& e )
 	{
 		mSchemaLock.UnlockWrite();
-		throw std::runtime_error( e.what );
+		throw std::runtime_error( e.what() );
 	}
 	mSchemaLock.UnlockWrite();
 	return 0;
@@ -176,7 +176,7 @@ std::unique_ptr<SPSegment> DBCore::GetSPSegment( uint64_t segmentId )
 	catch ( std::runtime_error& e )
 	{
 		mSchemaLock.UnlockRead();
-		throw std::runtime_error( e.what );
+		throw std::runtime_error( e.what() );
 	}
 	mSchemaLock.UnlockRead();
 	return std::move( std::unique_ptr<SPSegment>( new SPSegment( *this, *mBufferManager, segmentId ) ) );
@@ -200,7 +200,7 @@ std::unique_ptr<SPSegment> DBCore::GetSPSegment( std::string relationName )
 	catch ( std::runtime_error& e )
 	{
 		mSchemaLock.UnlockRead();
-		throw std::runtime_error( e.what );
+		throw std::runtime_error( e.what() );
 	}
 	mSchemaLock.UnlockRead();
 	return std::move( s );

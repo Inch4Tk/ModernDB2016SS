@@ -1,3 +1,4 @@
+#pragma once
 #ifndef SCHEMA_TYPES_H
 #define SCHEMA_TYPES_H
 
