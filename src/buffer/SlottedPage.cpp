@@ -196,8 +196,11 @@ void SlottedPage::Slot::SetOffset( uint32_t newOffset )
 {
 	// Mask the highest significant byte with value currently stored in
 	// the data byte which we will overwrite.
-	newOffset &= static_cast<uint32_t>(mData[1]) << 24;
-	*reinterpret_cast<uint32_t*>(&mData[1]) = newOffset;
+	uint8_t oldD1 = mData[1];
+	uint32_t combinedOffset = (newOffset << 8) & 0xFFFFFFF00;
+	combinedOffset |= static_cast<uint32_t>(mData[1]);
+	*reinterpret_cast<uint32_t*>(&mData[1]) = combinedOffset;
+	assert( mData[1] == oldD1 );
 }
 
 /// <summary>
@@ -208,8 +211,11 @@ void SlottedPage::Slot::SetLength( uint32_t newLength )
 {
 	// Mask the highest significant byte with value currently stored in
 	// the data byte which we will overwrite.
-	newLength &= static_cast<uint32_t>(mData[4]) << 24;
-	*reinterpret_cast<uint32_t*>(&mData[4]) = newLength;
+	uint8_t oldD4 = mData[4];
+	uint32_t combinedLength = (newLength << 8) & 0xFFFFFFF00;
+	combinedLength |= static_cast<uint32_t>(mData[4]);
+	*reinterpret_cast<uint32_t*>(&mData[4]) = combinedLength;
+	assert( mData[4] == oldD4 );
 }
 
 /// <summary>
@@ -257,7 +263,7 @@ bool SlottedPage::Slot::IsOtherRecordTID()
 /// <returns></returns>
 bool SlottedPage::Slot::IsFromOtherPage()
 {
-	return mData[1] == 1 ? false : true;
+	return mData[1] == 1 ? true : false;
 }
 
 /// <summary>
@@ -278,8 +284,8 @@ TID SlottedPage::Slot::GetOtherRecordTID()
 uint32_t SlottedPage::Slot::GetOffset()
 {
 	uint32_t offset = *reinterpret_cast<uint32_t*>(&mData[1]);
-	offset &= 0x00FFFFFF; // Mask away the first byte, since this is actually not part of offset
-	return offset;
+	offset &= 0xFFFFFF00; // Mask away the first byte, since this is actually not part of offset
+	return offset >> 8;
 }
 
 /// <summary>
@@ -289,6 +295,6 @@ uint32_t SlottedPage::Slot::GetOffset()
 uint32_t SlottedPage::Slot::GetLength()
 {
 	uint32_t length = *reinterpret_cast<uint32_t*>(&mData[4]);
-	length &= 0x00FFFFFF; // Mask away the first byte, since this is actually not part of length
-	return length;
+	length &= 0xFFFFFF00; // Mask away the first byte, since this is actually not part of length
+	return length >> 8;
 }
