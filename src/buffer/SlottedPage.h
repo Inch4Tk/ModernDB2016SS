@@ -40,10 +40,13 @@ public:
 		uint32_t GetLength();
 	};
 
-	// Setters
+	// Setters etc
 	void Initialize();
 	void UsedFirstFreeSlot();
+	void SetFirstFreeSlot(uint64_t slotId);
 	void SetDataStart( uint32_t newDataStart );
+	void FreeSlot( uint64_t slotId );
+	void FreeData( uint32_t offset, uint32_t length );
 
 	// Getters
 	bool IsInitialized();

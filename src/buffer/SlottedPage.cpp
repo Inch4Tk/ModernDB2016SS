@@ -38,6 +38,20 @@ void SlottedPage::UsedFirstFreeSlot()
 }
 
 /// <summary>
+/// Sets the first free slot if it is smaller than the current free slot.
+/// </summary>
+/// <param name="slotId">The slot identifier.</param>
+void SlottedPage::SetFirstFreeSlot( uint64_t slotId )
+{
+	if ( static_cast<uint16_t>(slotId) < GetFirstFreeSlotId() )
+	{
+		reinterpret_cast<uint16_t*>(mData)[2] = static_cast<uint16_t>(slotId);
+		// We could also remove unused slots at the end to reduce slotcount.
+		// But we will reuse these slots anyway later.
+	}
+}
+
+/// <summary>
 /// Sets the data start and recalculates free space.
 /// </summary>
 /// <param name="newDataStart">The new data start.</param>
@@ -46,6 +60,30 @@ void SlottedPage::SetDataStart( uint32_t newDataStart )
 	reinterpret_cast<uint32_t*>(mData)[3] = newDataStart;
 	uint32_t freeSpace = newDataStart - 16 - GetSlotCount() * 8;
 	reinterpret_cast<uint32_t*>(mData)[4] = freeSpace;
+}
+
+/// <summary>
+/// Frees the slot. Also writes in the slot. Does not clean up any records and does not manipulate header data related to records.
+/// </summary>
+/// <param name="slotId">The slot identifier.</param>
+void SlottedPage::FreeSlot( uint64_t slotId )
+{
+	GetSlot( slotId )->MakeFree();
+	SetFirstFreeSlot( slotId );
+}
+
+/// <summary>
+/// Frees the data at the spot. Length has to include the 8 bytes old tid, if the tuple was moved from another page.
+/// Will only manipulate the space if the data was at the end of our datablock.
+/// </summary>
+/// <param name="offset">The offset.</param>
+/// <param name="length">The length.</param>
+void SlottedPage::FreeData( uint32_t offset, uint32_t length )
+{
+	if (offset == GetDataStart())
+	{
+		SetDataStart( offset + length );
+	}
 }
 
 /// <summary>

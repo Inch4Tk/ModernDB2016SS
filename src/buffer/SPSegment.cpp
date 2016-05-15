@@ -75,12 +75,47 @@ TID SPSegment::Insert( const Record& r )
 
 /// <summary>
 /// Removes the record specified by tid. Updates the page header accordingly.
+/// Will return false, if no record was found for this TID.
 /// </summary>
 /// <param name="tid">The tid.</param>
 /// <returns></returns>
 bool SPSegment::Remove( TID tid )
 {
-	//TODO
+	std::pair<uint64_t, uint64_t> pIdsId = SplitTID( tid );
+	BufferFrame& frame = mBufferManager.FixPage( BufferManager::MergePageId( mSegmentId, pIdsId.first ), true );
+	SlottedPage* page = reinterpret_cast<SlottedPage*>(frame.GetData());
+
+	// Checks if tid is valid
+	if ( !page->IsInitialized() )
+	{
+		mBufferManager.UnfixPage( frame, false );
+		return false;
+	}
+	SlottedPage::Slot* slot = page->GetSlot( pIdsId.second );
+	if ( !slot || slot->IsFree() )
+	{
+		mBufferManager.UnfixPage( frame, false );
+		return false;
+	}
+	// We found a page and a non-empty slot. Check the options in our slot
+	if ( slot->IsOtherRecordTID() )
+	{
+		// Clean up this old slot and then call remove for other tid
+		TID newTid = slot->GetOtherRecordTID();
+		page->FreeSlot( pIdsId.second );
+		mBufferManager.UnfixPage( frame, true );
+		return Remove( newTid );
+	}
+	// Record is not on another page
+	uint32_t offset = slot->GetOffset();
+	uint32_t length = slot->GetLength();
+	if ( slot->IsFromOtherPage() )
+	{
+		length += 8; // Currently we do nothing with the original tid, but it is there, so we also want to delete it.
+	}
+	page->FreeSlot( pIdsId.second );
+	page->FreeData( offset, length );
+	mBufferManager.UnfixPage( frame, true );
 	return true;
 }
 
@@ -102,12 +137,7 @@ Record SPSegment::Lookup( TID tid )
 		return Record( 0, nullptr );
 	}
 	SlottedPage::Slot* slot = page->GetSlot( pIdsId.second );
-	if ( !slot )
-	{
-		mBufferManager.UnfixPage( frame, false );
-		return Record( 0, nullptr );
-	}
-	if ( slot->IsFree() )
+	if ( !slot || slot->IsFree() )
 	{
 		mBufferManager.UnfixPage( frame, false );
 		return Record( 0, nullptr );
