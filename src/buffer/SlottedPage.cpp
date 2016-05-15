@@ -142,6 +142,16 @@ uint32_t SlottedPage::GetFreeContSpace()
 }
 
 /// <summary>
+/// Gets the backlink tid at the offset specified.
+/// </summary>
+/// <param name="offset">The offset.</param>
+/// <returns></returns>
+TID SlottedPage::GetBacklinkTID( uint32_t offset )
+{
+	return *reinterpret_cast<uint64_t*>(&mData[offset]);
+}
+
+/// <summary>
 /// Gets the slot.
 /// </summary>
 /// <param name="slotId">The slot identifier.</param>
@@ -151,6 +161,16 @@ SlottedPage::Slot* SlottedPage::GetSlot( uint64_t slotId )
 	if (GetSlotCount() <= slotId)
 		return nullptr;
 	return reinterpret_cast<SlottedPage::Slot*>(&mData[16 + slotId * 8]);
+}
+
+/// <summary>
+/// Gets the data pointer.
+/// </summary>
+/// <param name="offset">The offset.</param>
+/// <returns></returns>
+void* SlottedPage::GetDataPointer( uint32_t offset )
+{
+	return &mData[offset];
 }
 
 /// <summary>
@@ -192,6 +212,15 @@ void SlottedPage::Slot::SetLength( uint32_t newLength )
 void SlottedPage::Slot::MakeFree()
 {
 	*reinterpret_cast<uint64_t*>(mData) = 0x0000000000000000;
+}
+
+/// <summary>
+/// Overwrites the slot with specified new data.
+/// </summary>
+/// <param name="newData">The new data.</param>
+void SlottedPage::Slot::Overwrite( uint64_t newData )
+{
+	*reinterpret_cast<uint64_t*>(mData) = newData;
 }
 
 /// <summary>

@@ -32,6 +32,7 @@ private:
 	uint64_t mSegmentId;
 
 	uint64_t FindFreePage( uint32_t minSpace );
+	bool InsertLinked( TID backlink, const Record& r );
 };
 
 #endif

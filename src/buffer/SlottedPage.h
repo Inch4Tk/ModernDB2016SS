@@ -30,6 +30,7 @@ public:
 		void SetOffset( uint32_t newOffset );
 		void SetLength( uint32_t newLength );
 		void MakeFree();
+		void Overwrite( uint64_t newData );
 
 		// Getters
 		bool IsFree();
@@ -55,7 +56,10 @@ public:
 	SlottedPage::Slot* GetFirstFreeSlot();
 	uint32_t GetDataStart();
 	uint32_t GetFreeContSpace();
+	TID GetBacklinkTID( uint32_t offset );
 	SlottedPage::Slot* GetSlot( uint64_t slotId );
+	void* GetDataPointer( uint32_t offset );
+
 private:
 	uint8_t mData[DB_PAGE_SIZE];
 	// Layout:

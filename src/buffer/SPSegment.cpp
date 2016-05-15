@@ -43,7 +43,7 @@ TID SPSegment::Insert( const Record& r )
 		if ( !page->IsInitialized() )
 		{
 			page->Initialize();
-			// TODO: tell schema to add another page to relation
+			mCore.AddPagesToRelation( mSegmentId, 1 );
 		}
 		if ( page->GetFreeContSpace() >= r.GetLen() )
 		{
@@ -60,6 +60,7 @@ TID SPSegment::Insert( const Record& r )
 			// Update page header
 			page->UsedFirstFreeSlot();
 			page->SetDataStart( insertDataBegin );
+			memcpy( page->GetDataPointer( insertDataBegin ), r.GetData(), r.GetLen() );
 
 			mBufferManager.UnfixPage( frame, true );
 			return newTID;
@@ -111,7 +112,10 @@ bool SPSegment::Remove( TID tid )
 	uint32_t length = slot->GetLength();
 	if ( slot->IsFromOtherPage() )
 	{
-		length += 8; // Currently we do nothing with the original tid, but it is there, so we also want to delete it.
+		// We assume backlink tid is always the one known to the outside
+		// Therefore this one is already removed and we are inside a recursive call
+		// So we just add it to the length and remove the whole thing
+		length += 8;
 	}
 	page->FreeSlot( pIdsId.second );
 	page->FreeData( offset, length );
@@ -152,7 +156,7 @@ Record SPSegment::Lookup( TID tid )
 	uint32_t length = slot->GetLength();
 	if ( slot->IsFromOtherPage() )
 	{
-		offset += 8; // Currently we do nothing with the original tid, but it is there
+		offset += 8; // Skip Backlink TID
 	}
 	Record r = Record( length, reinterpret_cast<uint8_t*>(frame.GetData()) + offset );
 	mBufferManager.UnfixPage( frame, false );
@@ -161,13 +165,74 @@ Record SPSegment::Lookup( TID tid )
 
 /// <summary>
 /// Updates the content of record specified by tid with content of record r.
+/// Will return false if tid is invalid.
 /// </summary>
 /// <param name="tid">The tid.</param>
 /// <param name="r">The r.</param>
 /// <returns></returns>
 bool SPSegment::Update( TID tid, const Record& r )
 {
-	//TODO
+	// If the new record is smaller or equal to the old record we just reuse the current record slot
+	// If it is bigger we remove the old record and insert it again.
+	std::pair<uint64_t, uint64_t> pIdsId = SplitTID( tid );
+	BufferFrame& frame = mBufferManager.FixPage( BufferManager::MergePageId( mSegmentId, pIdsId.first ), true );
+	SlottedPage* page = reinterpret_cast<SlottedPage*>(frame.GetData());
+
+	// Checks if tid is valid
+	if ( !page->IsInitialized() )
+	{
+		mBufferManager.UnfixPage( frame, false );
+		return false;
+	}
+	SlottedPage::Slot* slot = page->GetSlot( pIdsId.second );
+	if ( !slot || slot->IsFree() )
+	{
+		mBufferManager.UnfixPage( frame, false );
+		return false;
+	}
+	// Check if we are pointing to another record and recursively call
+	if ( slot->IsOtherRecordTID() )
+	{
+		TID newTid = slot->GetOtherRecordTID();
+		mBufferManager.UnfixPage( frame, true );
+		return Update( newTid, r );
+	}
+	// Record is not on another page
+	uint32_t offset = slot->GetOffset();
+	uint32_t length = slot->GetLength();
+	if ( slot->IsFromOtherPage() )
+	{
+		offset += 8; // Currently we do nothing with the original tid, but it is there, so we just skip
+	}
+
+	if ( r.GetLen() == length )
+	{
+		// Same length entry, just overwrite no changes necessary
+		memcpy( page->GetDataPointer( offset ), r.GetData(), r.GetLen() );
+	}
+	else if ( r.GetLen() < length )
+	{
+		// Smaller length entry, overwrite and change length
+		memcpy( page->GetDataPointer( offset ), r.GetData(), r.GetLen() );
+		slot->SetLength( r.GetLen() );
+	}
+	else if ( slot->IsFromOtherPage() )
+	{
+		// Resolve the indirection, by completely deleting the intermediate one.
+		TID backlink = page->GetBacklinkTID( offset - 8 );
+		page->FreeSlot( pIdsId.second );
+		page->FreeData( offset, length );
+		mBufferManager.UnfixPage( frame, true );
+		return InsertLinked( backlink, r );
+	}
+	else
+	{
+		// Not from another page but still too big, so the current slot is our new backlink
+		page->FreeData( offset, length );
+		mBufferManager.UnfixPage( frame, true );
+		return InsertLinked( tid, r );
+	}
+	mBufferManager.UnfixPage( frame, true );
 	return true;
 }
 
@@ -204,4 +269,45 @@ uint64_t SPSegment::FindFreePage( uint32_t minSpace )
 	}
 	assert( false );
 	return 0;
+}
+
+/// <summary>
+/// Inserts a record in an update step, where we have a backlink to a certain location, which also needs to be updated.
+/// </summary>
+/// <param name="backlink">The backlink.</param>
+/// <param name="r">The r.</param>
+/// <returns></returns>
+bool SPSegment::InsertLinked( TID backlink, const Record& r )
+{
+	std::vector<uint8_t> data;
+	data.resize( r.GetLen() + 8 );
+	memcpy( &data[0], &backlink, 8 );
+	memcpy( &data[8], r.GetData(), r.GetLen() );
+
+	// Create copyrecord with backlink tid prepended
+	Record copyR = Record( data.size(), &data[0] );
+
+	// Insert this one with normal insert
+	TID newTID = Insert( copyR );
+
+	// Write tid into backlink
+	std::pair<uint64_t, uint64_t> pIdsId = SplitTID( backlink );
+	BufferFrame& frame = mBufferManager.FixPage( BufferManager::MergePageId( mSegmentId, pIdsId.first ), true );
+	SlottedPage* page = reinterpret_cast<SlottedPage*>(frame.GetData());
+
+	// Checks if tid is valid
+	if ( !page->IsInitialized() )
+	{
+		mBufferManager.UnfixPage( frame, false );
+		return false;
+	}
+	SlottedPage::Slot* slot = page->GetSlot( pIdsId.second );
+	if ( !slot )
+	{
+		mBufferManager.UnfixPage( frame, false );
+		return false;
+	}
+	slot->Overwrite( newTID );
+	mBufferManager.UnfixPage( frame, true );
+	return true;
 }
