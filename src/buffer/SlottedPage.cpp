@@ -59,9 +59,9 @@ void SlottedPage::SetFirstFreeSlot( uint64_t slotId )
 /// <param name="newDataStart">The new data start.</param>
 void SlottedPage::SetDataStart( uint32_t newDataStart )
 {
-	assert( newDataStart >= static_cast<uint32_t>(16 + (GetSlotCount() + 0) * 8) );
+	assert( newDataStart >= static_cast<uint32_t>(16 + GetSlotCount() * 8) );
 	reinterpret_cast<uint32_t*>(mData)[2] = newDataStart;
-	uint32_t freeSpace = newDataStart - 16 - (GetSlotCount() + 0) * 8; // Always reserve 1 extra slot
+	uint32_t freeSpace = newDataStart - 16 - GetSlotCount() * 8;
 	reinterpret_cast<uint32_t*>(mData)[3] = freeSpace;
 }
 
@@ -287,7 +287,7 @@ TID SlottedPage::Slot::GetOtherRecordTID()
 }
 
 /// <summary>
-/// Gets the offset.
+/// Gets the offset. Returns the exact data begin, including any extra offset for the backlink tid.
 /// </summary>
 /// <returns></returns>
 uint32_t SlottedPage::Slot::GetOffset()
@@ -298,7 +298,7 @@ uint32_t SlottedPage::Slot::GetOffset()
 }
 
 /// <summary>
-/// Gets the length.
+/// Gets the length. Returns the whole length, including any length that is for the backlink tid.
 /// </summary>
 /// <returns></returns>
 uint32_t SlottedPage::Slot::GetLength()

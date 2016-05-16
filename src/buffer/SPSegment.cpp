@@ -130,13 +130,6 @@ bool SPSegment::Remove( TID tid )
 	// Record is not on another page
 	uint32_t offset = slot->GetOffset();
 	uint32_t length = slot->GetLength();
-	if ( slot->IsFromOtherPage() )
-	{
-		// We assume backlink tid is always the one known to the outside
-		// Therefore this one is already removed and we are inside a recursive call
-		// So we just add it to the length and remove the whole thing
-		length += 8;
-	}
 	page->FreeSlot( pIdsId.second );
 	page->FreeData( offset, length );
 	mBufferManager.UnfixPage( frame, true );
@@ -174,9 +167,10 @@ Record SPSegment::Lookup( TID tid )
 	}
 	uint32_t offset = slot->GetOffset();
 	uint32_t length = slot->GetLength();
+	// We want our entry without the backlink tid if that exists
 	if ( slot->IsFromOtherPage() )
 	{
-		offset += 8; // Skip Backlink TID
+		offset += 8;
 		length -= 8;
 	}
 	Record r = Record( length, reinterpret_cast<uint8_t*>(frame.GetData()) + offset );
@@ -221,6 +215,7 @@ bool SPSegment::Update( TID tid, const Record& r )
 	// Record is not on another page
 	uint32_t offset = slot->GetOffset();
 	uint32_t length = slot->GetLength();
+	// Make our offset and length, not contain backlink tid if present
 	if ( slot->IsFromOtherPage() )
 	{
 		offset += 8;
@@ -236,12 +231,14 @@ bool SPSegment::Update( TID tid, const Record& r )
 	{
 		// Smaller length entry, overwrite and change length
 		memcpy( page->GetDataPointer( offset ), r.GetData(), r.GetLen() );
+		// Length has to contain extra tid if that is present
 		uint32_t newlength = slot->IsFromOtherPage() ? r.GetLen() + 8 : r.GetLen();
 		slot->SetLength( newlength );
 	}
 	else if ( slot->IsFromOtherPage() )
 	{
 		// Resolve the indirection, by completely deleting the intermediate one.
+		// Add back backlink values
 		TID backlink = page->GetBacklinkTID( offset - 8 );
 		page->FreeSlot( pIdsId.second );
 		page->FreeData( offset - 8, length + 8 );
