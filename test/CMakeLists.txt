@@ -2,6 +2,7 @@
 set(MY_TEST_SRCS
     alltests.cpp
     buffer/buffertest.cpp
+	buffer/segmenttest.cpp
     utility/helperstest.cpp
     utility/rwlocktest.cpp
     sql/schematest.cpp
