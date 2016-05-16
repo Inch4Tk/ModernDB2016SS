@@ -15,11 +15,6 @@ int main( int argc, char* argv[] )
 	_CrtSetDbgFlag( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
 #endif // _CRTDBG_MAP_ALLOC
 
-	if ( argc != 2 )
-	{
-		LogError( "usage: " + std::string( argv[0] ) + "<path_to_sql_file>");
-		return -1;
-	}
 	DBCore core;
 	return 0;
 }

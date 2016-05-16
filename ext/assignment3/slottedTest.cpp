@@ -145,6 +145,6 @@ int main( int argc, char** argv )
 		assert( rec.GetLen() == len );
 		assert( memcmp( rec.GetData(), value.c_str(), len ) == 0 );
 	}
-
+    std::cout << "Hooray, we did not crash, so the run was successful" << std::endl;
 	return 0;
 }
