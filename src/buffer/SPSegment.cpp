@@ -223,7 +223,8 @@ bool SPSegment::Update( TID tid, const Record& r )
 	uint32_t length = slot->GetLength();
 	if ( slot->IsFromOtherPage() )
 	{
-		offset += 8; // Currently we do nothing with the original tid, but it is there, so we just skip
+		offset += 8;
+		length -= 8;
 	}
 
 	if ( r.GetLen() == length )
@@ -235,14 +236,15 @@ bool SPSegment::Update( TID tid, const Record& r )
 	{
 		// Smaller length entry, overwrite and change length
 		memcpy( page->GetDataPointer( offset ), r.GetData(), r.GetLen() );
-		slot->SetLength( r.GetLen() );
+		uint32_t newlength = slot->IsFromOtherPage() ? r.GetLen() + 8 : r.GetLen();
+		slot->SetLength( newlength );
 	}
 	else if ( slot->IsFromOtherPage() )
 	{
 		// Resolve the indirection, by completely deleting the intermediate one.
 		TID backlink = page->GetBacklinkTID( offset - 8 );
 		page->FreeSlot( pIdsId.second );
-		page->FreeData( offset, length );
+		page->FreeData( offset - 8, length + 8 );
 		mBufferManager.UnfixPage( frame, true );
 		return InsertLinked( backlink, r );
 	}
