@@ -32,8 +32,19 @@ SPSegment::~SPSegment()
 /// <returns></returns>
 TID SPSegment::Insert( const Record& r )
 {
+	return Insert( r, false );
+}
+
+/// <summary>
+/// Inserts the specified r. Sets the slot to from other page if bool is true. (Assumes 8 byte backlink tid is prepended to record)
+/// </summary>
+/// <param name="r">The r.</param>
+/// <param name="setFromOtherPage">if set to <c>true</c> [set from other page].</param>
+/// <returns></returns>
+TID SPSegment::Insert( const Record& r, bool setFromOtherPage )
+{
 	// Loop until we find a free page
-	while (true)
+	while ( true )
 	{
 		uint64_t pageId = FindFreePage( r.GetLen() );
 		BufferFrame& frame = mBufferManager.FixPage( BufferManager::MergePageId( mSegmentId, pageId ), true );
@@ -55,10 +66,17 @@ TID SPSegment::Insert( const Record& r )
 
 			// Find a slot and update slot
 			SlottedPage::Slot* slot = page->GetFirstFreeSlot();
-			slot->SetInPage();
+			if (setFromOtherPage)
+			{
+				slot->SetFromOtherPage();
+			}
+			else
+			{
+				slot->SetInPage();
+			}
 			slot->SetOffset( insertDataBegin );
 			slot->SetLength( r.GetLen() );
-			
+
 			// Update page header
 			page->UsedFirstFreeSlot();
 			page->SetDataStart( insertDataBegin );
@@ -159,6 +177,7 @@ Record SPSegment::Lookup( TID tid )
 	if ( slot->IsFromOtherPage() )
 	{
 		offset += 8; // Skip Backlink TID
+		length -= 8;
 	}
 	Record r = Record( length, reinterpret_cast<uint8_t*>(frame.GetData()) + offset );
 	mBufferManager.UnfixPage( frame, false );
@@ -290,7 +309,7 @@ bool SPSegment::InsertLinked( TID backlink, const Record& r )
 	Record copyR = Record( static_cast<uint32_t>(data.size()), &data[0] );
 
 	// Insert this one with normal insert
-	TID newTID = Insert( copyR );
+	TID newTID = Insert( copyR, true );
 
 	// Write tid into backlink
 	std::pair<uint64_t, uint64_t> pIdsId = SplitTID( backlink );
@@ -309,7 +328,7 @@ bool SPSegment::InsertLinked( TID backlink, const Record& r )
 		mBufferManager.UnfixPage( frame, false );
 		return false;
 	}
-	slot->Overwrite( newTID );
+	slot->Overwrite( ~newTID ); // Have to remember, tids are inverted
 	mBufferManager.UnfixPage( frame, true );
 	return true;
 }

@@ -27,6 +27,7 @@ public:
 		
 		// Setters
 		void SetInPage();
+		void SetFromOtherPage();
 		void SetOffset( uint32_t newOffset );
 		void SetLength( uint32_t newLength );
 		void MakeFree();

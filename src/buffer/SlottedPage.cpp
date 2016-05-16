@@ -189,6 +189,15 @@ void SlottedPage::Slot::SetInPage()
 }
 
 /// <summary>
+/// Sets the correct status bytes for a value moved from another page.
+/// </summary>
+void SlottedPage::Slot::SetFromOtherPage()
+{
+	mData[0] = 0;
+	mData[1] = 1;
+}
+
+/// <summary>
 /// Sets the offset.
 /// </summary>
 /// <param name="newOffset">The new offset.</param>

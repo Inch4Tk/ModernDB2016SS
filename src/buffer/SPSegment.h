@@ -31,6 +31,7 @@ private:
 	BufferManager& mBufferManager;
 	uint64_t mSegmentId;
 
+	TID Insert( const Record& r, bool setFromOtherPage );
 	uint64_t FindFreePage( uint32_t minSpace );
 	bool InsertLinked( TID backlink, const Record& r );
 };
