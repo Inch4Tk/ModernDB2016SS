@@ -24,6 +24,8 @@ set(MY_SRCS
     sql/SchemaParser.h
     sql/SchemaParser.cpp
     sql/SchemaTypes.h
+    index/BPTree.h
+    index/BPTree.cpp
 )
 
 # Add a library containing project source and link to main executable

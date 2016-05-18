@@ -24,6 +24,7 @@ set(CXX_STANDARD_REQUIRED ON)
 option(COMPILE_TESTS "Compiles the tests for the project" ON)
 option(ASSIGN2_VALID "Builds the project with the provided assignment2 validation file." OFF)
 option(ASSIGN3_VALID "Builds the project with the provided assignment3 validation file." OFF)
+option(ASSIGN4_VALID "Builds the project with the provided assignment4 validation file." OFF)
 
 # Include GoogleTest external project
 if(COMPILE_TESTS)
@@ -49,4 +50,8 @@ endif()
 
 if(ASSIGN3_VALID)
     add_subdirectory(ext/assignment3)
+endif()
+
+if(ASSIGN4_VALID)
+    add_subdirectory(ext/assignment4)
 endif()
