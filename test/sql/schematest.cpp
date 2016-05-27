@@ -113,8 +113,8 @@ TEST_F( SchemaTest, SerializationDeserializationMultipages )
 	core->AddRelationsFromString( sql );
 
 	// Create a serialized data
-	const Schema* olds = core->GetSchema();
+	const Schema olds = *core->GetSchema();
 	SDELETE( core );
 	core = new DBCore();
-	EXPECT_EQ( *olds, *core->GetSchema() );
+	EXPECT_EQ( olds, *core->GetSchema() );
 }
