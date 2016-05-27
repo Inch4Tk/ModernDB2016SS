@@ -18,15 +18,25 @@ struct Schema {
          std::string name;
          SchemaTypes::Tag type;
 		 uint32_t len;
-         bool notNull;
+		 bool notNull;
          Attribute() : len(~0), notNull(true) {}
 		 bool operator==( const Schema::Relation::Attribute& other ) const;
 		 bool operator!=( const Schema::Relation::Attribute& other ) const;
       };
+	  struct Index
+	  {
+		  std::string attrName;
+		  uint64_t segmentId = DB_TEST_SEGMENT; // If schema will be inserted for every index this will be set correctly
+		  uint64_t pagecount = 0;
+		  uint64_t rootId = 0;
+		  bool operator==( const Schema::Relation::Index& other ) const;
+		  bool operator!=( const Schema::Relation::Index& other ) const;
+	  };
 	  uint64_t segmentId = DB_TEST_SEGMENT; // If schema will be inserted to db, segment id will be set correctly
 	  uint64_t pagecount = 0;
       std::string name;
       std::vector<Schema::Relation::Attribute> attributes;
+	  std::vector<Schema::Relation::Index> indices;
       std::vector<uint32_t> primaryKey;
       Relation(const std::string& name) : name(name) {
 	  }
@@ -41,6 +51,8 @@ struct Schema {
    void MergeSchema( Schema& other );
    Schema::Relation& GetRelationWithSegmentId( uint64_t segmentId ); // non-const, because we would have to return const relation
    Schema::Relation& GetRelationWithName( std::string name); // non-const, because we would have to return const relation
+   Schema::Relation::Index& GetIndexWithSegmentId( uint64_t segmentId ); // non-const, because we would have to return const index
+   Schema::Relation::Index& GetIndexWithName( std::string relationname, std::string attrname ); // non-const, because we would have to return const index
 
    bool operator==( const Schema& other ) const;
    bool operator!=( const Schema& other ) const;
@@ -49,6 +61,7 @@ private:
 	// Serialization
 	void SerializeRelation( Relation& r, std::vector<uint8_t>& data );
 	void SerializeAttribute( Relation::Attribute& a, std::vector<uint8_t>& data );
+	void SerializeIndex( Relation::Index& i, std::vector<uint8_t>& data );
 
 	void AppendToData( bool toappend, std::vector<uint8_t>& data );
 	void AppendToData( uint16_t toappend, std::vector<uint8_t>& data );
@@ -59,6 +72,7 @@ private:
 	// Deserialization
 	void DeserializeRelation( const uint8_t*& data );
 	void DeserializeAttribute( Relation& r, const uint8_t*& data );
+	void DeserializeIndex( Relation& r, const uint8_t*& data );
 
 	void ReadFromData( bool& toread, const uint8_t*& data );
 	void ReadFromData( uint16_t& toread, const uint8_t*& data );

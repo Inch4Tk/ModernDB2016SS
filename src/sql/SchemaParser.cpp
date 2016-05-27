@@ -195,6 +195,8 @@ void SchemaParser::nextToken( unsigned line, const std::string& token, Schema& s
 				auto it = std::find_if( attributes.begin(), attributes.end(), p );
 				if ( it == attributes.end() )
 					throw SchemaParserError( line, "'" + token + "' is not an attribute of '" + schema.relations.back().name + "'" );
+				schema.relations.back().indices.push_back( Schema::Relation::Index() ); // Autocreate index for primary keys
+				schema.relations.back().indices.back().attrName = it->name;
 				schema.relations.back().primaryKey.push_back( static_cast<unsigned int>(std::distance( attributes.begin(), it )) );
 				state = State::KeyName;
 			}

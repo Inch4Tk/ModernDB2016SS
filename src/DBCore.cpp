@@ -122,10 +122,12 @@ const Schema* DBCore::GetSchema()
 /// <returns></returns>
 uint64_t DBCore::GetPagesOfRelation( uint64_t segmentId )
 {
+	uint64_t pagecount = 0;
 	mSchemaLock.LockRead();
 	try
 	{
 		Schema::Relation& r = mMasterSchema.GetRelationWithSegmentId( segmentId );
+		pagecount = r.pagecount;
 	}
 	catch (std::runtime_error& e)
 	{
@@ -133,7 +135,7 @@ uint64_t DBCore::GetPagesOfRelation( uint64_t segmentId )
 		throw std::runtime_error( e.what() );
 	}
 	mSchemaLock.UnlockRead();
-	return 0;
+	return pagecount;
 }
 
 /// <summary>
@@ -143,7 +145,7 @@ uint64_t DBCore::GetPagesOfRelation( uint64_t segmentId )
 /// <param name="segmentId">The segment identifier.</param>
 /// <param name="numPages">The number pages.</param>
 /// <returns></returns>
-uint64_t DBCore::AddPagesToRelation( uint64_t segmentId, uint64_t numPages )
+void DBCore::AddPagesToRelation( uint64_t segmentId, uint64_t numPages )
 {
 	mSchemaLock.LockWrite();
 	try
@@ -157,7 +159,53 @@ uint64_t DBCore::AddPagesToRelation( uint64_t segmentId, uint64_t numPages )
 		throw std::runtime_error( e.what() );
 	}
 	mSchemaLock.UnlockWrite();
-	return 0;
+}
+
+/// <summary>
+/// Gets the pages of an index. Threadsafe iteration through schema. But number of pages can increase after return.
+/// Throws on non-existent index
+/// </summary>
+/// <param name="segmentId">The segment identifier.</param>
+/// <returns></returns>
+uint64_t DBCore::GetPagesOfIndex( uint64_t segmentId )
+{
+	uint64_t pagecount = 0;
+	mSchemaLock.LockRead();
+	try
+	{
+		Schema::Relation::Index& i = mMasterSchema.GetIndexWithSegmentId( segmentId );
+		pagecount = i.pagecount;
+	}
+	catch ( std::runtime_error& e )
+	{
+		mSchemaLock.UnlockRead();
+		throw std::runtime_error( e.what() );
+	}
+	mSchemaLock.UnlockRead();
+	return pagecount;
+}
+
+/// <summary>
+/// Adds x new pages to an index.
+/// Throws on non-existent index.
+/// </summary>
+/// <param name="segmentId">The segment identifier.</param>
+/// <param name="numPages">The number pages.</param>
+/// <returns></returns>
+void DBCore::AddPagesToIndex( uint64_t segmentId, uint64_t numPages )
+{
+	mSchemaLock.LockWrite();
+	try
+	{
+		Schema::Relation::Index& i = mMasterSchema.GetIndexWithSegmentId( segmentId );
+		i.pagecount += numPages;
+	}
+	catch ( std::runtime_error& e )
+	{
+		mSchemaLock.UnlockWrite();
+		throw std::runtime_error( e.what() );
+	}
+	mSchemaLock.UnlockWrite();
 }
 
 /// <summary>
