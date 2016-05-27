@@ -2,17 +2,21 @@
 #ifndef BPTREE_H
 #define BPTREE_H
 
+#include "DBCore.h"
+#include "buffer/BufferManager.h"
 #include "utility/defines.h"
+
 #include <stdint.h>
+#include <utility>
 
 /// <summary>
-/// Parameterized B+ Tree implementation
+/// Parameterized B+ Tree implementation. Operations are reentrant.
 /// </summary>
 template <class T, typename CMP>
 class BPTree
 {
 public:
-	BPTree();
+	BPTree( DBCore& core, BufferManager& bm, uint64_t segmentId );
 	~BPTree();
 
 	bool Insert(T key, TID tid);
@@ -20,8 +24,29 @@ public:
 	std::pair<bool, TID> Lookup(T key);
 
 private:
-
+	DBCore& mCore;
+	BufferManager& mBufferManager;
+	uint64_t mSegmentId;
+	uint32_t sizeKey;
 };
+
+/// <summary>
+/// Initializes a new instance of the <see cref="BPTree{T, CMP}"/> class.
+/// </summary>
+template <class T, typename CMP>
+BPTree<T, CMP>::BPTree( DBCore& core, BufferManager& bm, uint64_t segmentId ) :
+	mCore(core), mBufferManager(bm), segmentId(segmentId), sizeKey( sizeof( T ) )
+{
+}
+
+/// <summary>
+/// Finalizes an instance of the <see cref="BPTree{T, CMP}"/> class.
+/// </summary>
+template <class T, typename CMP>
+BPTree<T, CMP>::~BPTree()
+{
+
+}
 
 /// <summary>
 /// Inserts the specified key, TID tuple.
@@ -32,7 +57,7 @@ private:
 template <class T, typename CMP>
 bool BPTree<T, CMP>::Insert( T key, TID tid )
 {
-
+	mBufferManager.FixPage(rootId)
 }
 
 /// <summary>
@@ -56,25 +81,5 @@ std::pair<bool, TID> BPTree<T, CMP>::Lookup( T key )
 {
 
 }
-
-/// <summary>
-/// Initializes a new instance of the <see cref="BPTree{T, CMP}"/> class.
-/// </summary>
-template <class T, typename CMP>
-BPTree<T, CMP>::BPTree()
-{
-
-}
-
-/// <summary>
-/// Finalizes an instance of the <see cref="BPTree{T, CMP}"/> class.
-/// </summary>
-template <class T, typename CMP>
-BPTree<T, CMP>::~BPTree()
-{
-
-}
-
-
 
 #endif

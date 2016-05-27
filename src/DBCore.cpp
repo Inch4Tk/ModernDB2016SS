@@ -215,7 +215,7 @@ uint64_t DBCore::AddPagesToIndex( uint64_t segmentId, uint64_t numPages )
 }
 
 /// <summary>
-/// Gets the root pageid of the index specified by segmentId.
+/// Gets the root pageid of the index specified by segmentId. Verify that the returned page is still root after fixing with buffer manager.
 /// Throws on non-existent index.
 /// </summary>
 /// <param name="segmentId">The segment identifier.</param>
@@ -239,7 +239,8 @@ uint64_t DBCore::GetRootOfIndex( uint64_t segmentId )
 }
 
 /// <summary>
-/// Sets the root page of the index specified by segmentid to rootId. Root id has to contain the segmentid already.
+/// Sets the root page of the index specified by segmentid to rootId. Root id has to contain the segmentid already. 
+/// Only set the root if both the old root and the new root are already write fixed pages.
 /// Throws on non-existent index.
 /// </summary>
 /// <param name="segmentId">The segment identifier.</param>

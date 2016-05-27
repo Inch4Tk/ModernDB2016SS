@@ -26,6 +26,7 @@ set(MY_SRCS
     sql/SchemaTypes.h
     index/BPTree.h
     index/BPTree.cpp
+	index/BPTreeNode.h
 )
 
 # Add a library containing project source and link to main executable
