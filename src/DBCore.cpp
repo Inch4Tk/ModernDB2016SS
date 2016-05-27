@@ -144,14 +144,16 @@ uint64_t DBCore::GetPagesOfRelation( uint64_t segmentId )
 /// </summary>
 /// <param name="segmentId">The segment identifier.</param>
 /// <param name="numPages">The number pages.</param>
-/// <returns></returns>
-void DBCore::AddPagesToRelation( uint64_t segmentId, uint64_t numPages )
+/// <returns>Returns the pageid of the last page added (already containing segmentid)</returns>
+uint64_t DBCore::AddPagesToRelation( uint64_t segmentId, uint64_t numPages )
 {
+	uint64_t pageId = 0;
 	mSchemaLock.LockWrite();
 	try
 	{
 		Schema::Relation& r = mMasterSchema.GetRelationWithSegmentId( segmentId );
 		r.pagecount += numPages;
+		pageId = BufferManager::MergePageId( segmentId, r.pagecount - 1 );
 	}
 	catch ( std::runtime_error& e )
 	{
@@ -159,6 +161,7 @@ void DBCore::AddPagesToRelation( uint64_t segmentId, uint64_t numPages )
 		throw std::runtime_error( e.what() );
 	}
 	mSchemaLock.UnlockWrite();
+	return pageId;
 }
 
 /// <summary>
@@ -191,14 +194,16 @@ uint64_t DBCore::GetPagesOfIndex( uint64_t segmentId )
 /// </summary>
 /// <param name="segmentId">The segment identifier.</param>
 /// <param name="numPages">The number pages.</param>
-/// <returns></returns>
-void DBCore::AddPagesToIndex( uint64_t segmentId, uint64_t numPages )
+/// <returns>Returns the pageid of the last page added (already containing segmentid)</returns>
+uint64_t DBCore::AddPagesToIndex( uint64_t segmentId, uint64_t numPages )
 {
+	uint64_t pageId = 0;
 	mSchemaLock.LockWrite();
 	try
 	{
 		Schema::Relation::Index& i = mMasterSchema.GetIndexWithSegmentId( segmentId );
 		i.pagecount += numPages;
+		pageId = BufferManager::MergePageId( segmentId, i.pagecount - 1 );
 	}
 	catch ( std::runtime_error& e )
 	{
@@ -206,6 +211,53 @@ void DBCore::AddPagesToIndex( uint64_t segmentId, uint64_t numPages )
 		throw std::runtime_error( e.what() );
 	}
 	mSchemaLock.UnlockWrite();
+	return pageId;
+}
+
+/// <summary>
+/// Gets the root pageid of the index specified by segmentId.
+/// Throws on non-existent index.
+/// </summary>
+/// <param name="segmentId">The segment identifier.</param>
+/// <returns>Returns the pageid of root page (already containing segmentid)</returns>
+uint64_t DBCore::GetRootOfIndex( uint64_t segmentId )
+{
+	uint64_t rootId = 0;
+	mSchemaLock.LockRead();
+	try
+	{
+		Schema::Relation::Index& i = mMasterSchema.GetIndexWithSegmentId( segmentId );
+		rootId = i.rootId;
+	}
+	catch ( std::runtime_error& e )
+	{
+		mSchemaLock.UnlockRead();
+		throw std::runtime_error( e.what() );
+	}
+	mSchemaLock.UnlockRead();
+	return rootId;
+}
+
+/// <summary>
+/// Sets the root page of the index specified by segmentid to rootId. Root id has to contain the segmentid already.
+/// Throws on non-existent index.
+/// </summary>
+/// <param name="segmentId">The segment identifier.</param>
+/// <param name="rootId">The root identifier.</param>
+void DBCore::SetRootOfIndex( uint64_t segmentId, uint64_t rootId )
+{
+	mSchemaLock.LockRead();
+	try
+	{
+		Schema::Relation::Index& i = mMasterSchema.GetIndexWithSegmentId( segmentId );
+		i.rootId = rootId;
+	}
+	catch ( std::runtime_error& e )
+	{
+		mSchemaLock.UnlockRead();
+		throw std::runtime_error( e.what() );
+	}
+	mSchemaLock.UnlockRead();
 }
 
 /// <summary>

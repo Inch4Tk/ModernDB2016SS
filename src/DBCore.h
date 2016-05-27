@@ -29,9 +29,11 @@ public:
 	BufferManager* GetBufferManager();
 	const Schema* GetSchema();
 	uint64_t GetPagesOfRelation( uint64_t segmentId );
-	void AddPagesToRelation( uint64_t segmentId, uint64_t numPages );
+	uint64_t AddPagesToRelation( uint64_t segmentId, uint64_t numPages );
 	uint64_t GetPagesOfIndex( uint64_t segmentId );
-	void AddPagesToIndex( uint64_t segmentId, uint64_t numPages );
+	uint64_t AddPagesToIndex( uint64_t segmentId, uint64_t numPages );
+	uint64_t GetRootOfIndex( uint64_t segmentId );
+	void SetRootOfIndex( uint64_t segmentId, uint64_t rootId );
 	std::unique_ptr<SPSegment> GetSPSegment( uint64_t segmentId );
 	std::unique_ptr<SPSegment> GetSPSegment( std::string relationName );
 
