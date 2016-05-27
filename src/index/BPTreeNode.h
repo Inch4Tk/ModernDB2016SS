@@ -17,6 +17,7 @@ public:
 	uint32_t BinarySearch( T key );
 	bool IsRoot();
 	bool IsLeaf();
+	void Erase( uint32_t n );
 	uint32_t GetFreeCount();
 	uint64_t GetValue( uint32_t n );
 	T GetKey(uint32_t n);
@@ -28,6 +29,25 @@ private:
 	uint64_t mNextUpper; // If leaf then this contains pageid of next leaf node. If inner this contains pageid of highest page
 	uint8_t mData[DB_PAGE_SIZE - 16]; // key/child or key/tid pairs. Reduce size by the header values
 };
+
+/// <summary>
+/// Erases the n-th key value tuple and shifts all the entries afterwards to the left.
+/// </summary>
+/// <param name="n">The n.</param>
+template <class T, typename CMP>
+void BPTreeNode<T, CMP>::Erase( uint32_t n )
+{
+	if ( n >= mCount )
+	{
+		return;
+	}
+	--mCount; // Decrement amount of entries, this way we safe ourselves 2 minus ops (doesn't matter but we take it)
+	const uint32_t pairsize = sizeof( T ) + sizeof( uint64_t );
+	uint32_t startpos = n*pairsize;
+	uint32_t sizeAfter = (mCount - n) * pairsize;
+	memmove( &mData[startpos], &mData[startpos + pairsize], sizeAfter );
+	memset( &mData[mCount], 0, 8 );
+}
 
 /// <summary>
 /// Gets the n-th value. If n is bigger than count - 1 we get the content of the next upper field.
