@@ -57,7 +57,7 @@ BPTree<T, CMP>::~BPTree()
 template <class T, typename CMP>
 bool BPTree<T, CMP>::Insert( T key, TID tid )
 {
-	mBufferManager.FixPage(rootId)
+
 }
 
 /// <summary>
@@ -79,7 +79,41 @@ bool BPTree<T, CMP>::Erase( T key )
 template <class T, typename CMP>
 std::pair<bool, TID> BPTree<T, CMP>::Lookup( T key )
 {
+	// Acquire root
+	uint64_t rootId = mCore.GetRootOfIndex( mSegmentId );
+	BufferFrame& frame = mBufferManager.FixPage( rootId, false );
+	BPTreeNode<T, CMP>* curNode = reinterpret_cast<BPTreeNode<T, CMP>*>(frame.GetData());
+	// Make sure we are still in the root, if not, we retry
+	if ( !curNode->IsRoot() )
+	{
+		mBufferManager.UnfixPage( frame, false );
+		return Lookup( key );
+	}
 
+	// Traverse the tree until we are in a leaf
+	while (!curNode->IsLeaf())
+	{
+		uint64_t index = curNode->BinarySearch( key );
+		// Perform latch coupling
+		BufferFrame& oldFrame = frame;
+		frame = mBufferManager.FixPage( curNode->GetValue( index ), false );
+		mBufferManager.UnfixPage( oldFrame, false );
+		curNode = reinterpret_cast<BPTreeNode<T, CMP>*>(frame.GetData());
+	}
+	// Once we arrived in our leaf we perform a last binary search for the element
+	uint64_t index = curNode->BinarySearch( key );
+	foundKey = curNode->GetKey( index );
+	bool found = false;
+	TID value = 0;
+	if (foundKey == key)
+	{
+		found = true;
+		value = curNode->GetValue( index );
+	}
+
+	mBufferManager.UnfixPage( frame, false );
+
+	return std::make_pair( found, value );
 }
 
 #endif

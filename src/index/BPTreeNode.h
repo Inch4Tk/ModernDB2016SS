@@ -18,6 +18,7 @@ public:
 	bool IsRoot();
 	bool IsLeaf();
 	uint32_t GetFreeCount();
+	uint64_t GetValue( uint32_t n );
 	T GetKey(uint32_t n);
 private:
 	uint8_t mRootMarker; // 0 == root, > 0 == not root, this is a convenience thing for checking after acquiring a lock on bufferframe
@@ -27,6 +28,22 @@ private:
 	uint64_t mNextUpper; // If leaf then this contains pageid of next leaf node. If inner this contains pageid of highest page
 	uint8_t mData[DB_PAGE_SIZE - 16]; // key/child or key/tid pairs. Reduce size by the header values
 };
+
+/// <summary>
+/// Gets the n-th value. If n is bigger than count - 1 we get the content of the next upper field.
+/// </summary>
+/// <param name="n">The n.</param>
+/// <returns></returns>
+template <class T, typename CMP>
+uint64_t BPTreeNode<T, CMP>::GetValue( uint32_t n )
+{
+	if (n + 1 > count) // prevent uint overflows, just shift the -1
+	{
+		return nextUpper;
+	}
+	const uint32_t pairsize = sizeof( T ) + sizeof( uint64_t );
+	return *reinterpret_cast<uint64_t*>(&mData[n*pairsize] + sizeof(T));
+}
 
 /// <summary>
 /// Gets the n-th key. (0 indexed)
@@ -41,7 +58,7 @@ T BPTreeNode<T, CMP>::GetKey( uint32_t n )
 }
 
 /// <summary>
-/// Perform a binary search over the key/x pairs. Returns offset in mData to the spot where key > left side and key <= right side
+/// Perform a binary search over the key/x pairs. Returns the index (into key/x pairs) where key > left side and key <= right side
 /// </summary>
 /// <param name="key">The key.</param>
 /// <returns></returns>
