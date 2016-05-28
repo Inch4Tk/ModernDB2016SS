@@ -14,15 +14,26 @@ template <class T, typename CMP>
 class BPTreeNode
 {
 public:
+	// Getter type methods
 	uint32_t BinarySearch( T key );
 	bool IsRoot();
 	bool IsLeaf();
-	void Erase( uint32_t n );
+	uint32_t GetCount();
 	uint32_t GetFreeCount();
-	uint64_t GetValue( uint32_t n );
-	T GetKey(uint32_t n);
+	uint64_t GetValue( uint32_t index );
+	T GetKey( uint32_t index );
+
+	// Setter type methods
+	void MakeInner();
+	void MakeNotRoot();
+	void SetValue( uint32_t index, uint64_t value );
+	void SetNextUpper( uint64_t nextUpper );
+	uint32_t InsertShift( T key, uint64_t value );
+	void Erase( uint32_t index );
+	T SplitTo( BPTreeNode* other );
+
 private:
-	uint8_t mRootMarker; // 0 == root, > 0 == not root, this is a convenience thing for checking after acquiring a lock on bufferframe
+	uint8_t mRootMarker; // 0 == root, >0 == not root, this is a convenience thing for checking after acquiring a lock on bufferframe
 	uint8_t mNodeType; // 0 == leaf, >0 == inner
 	uint16_t mPadding; // Some padding to be 32 bit aligned
 	uint32_t mCount; // Number of entries
@@ -31,11 +42,97 @@ private:
 };
 
 /// <summary>
-/// Erases the n-th key value tuple and shifts all the entries afterwards to the left.
+/// Sets the value at index position. Automatically sets to next upper if out of bounds to the right.
+/// </summary>
+/// <param name="index">The index.</param>
+/// <param name="value">The value.</param>
+template <class T, typename CMP>
+void BPTreeNode<T, CMP>::SetValue( uint32_t index, uint64_t value )
+{
+	if ( index + 1 > mCount ) // prevent uint overflows, just shift the -1
+	{
+		mNextUpper = value;
+	}
+	const uint32_t pairsize = sizeof( T ) + sizeof( uint64_t );
+	*reinterpret_cast<uint64_t*>(&mData[index * pairsize] + sizeof( T )) = value;
+}
+
+/// <summary>
+/// Gets the count.
+/// </summary>
+/// <returns></returns>
+template <class T, typename CMP>
+uint32_t BPTreeNode<T, CMP>::GetCount()
+{
+	return mCount;
+}
+
+/// <summary>
+/// Performs a split to the other node. Assumes other is an empty node. Returns the biggest key on the left side.
+/// </summary>
+/// <param name="other">The other.</param>
+template <class T, typename CMP>
+T BPTreeNode<T, CMP>::SplitTo( BPTreeNode* other )
+{
+
+}
+
+/// <summary>
+/// Sets the next upper field.
+/// </summary>
+/// <param name="nextUpper">The next upper.</param>
+template <class T, typename CMP>
+void BPTreeNode<T, CMP>::SetNextUpper( uint64_t nextUpper )
+{
+	mNextUpper = nextUpper;
+}
+
+/// <summary>
+/// Makes the node to a non-root node.
+/// </summary>
+template <class T, typename CMP>
+void BPTreeNode<T, CMP>::MakeNotRoot()
+{
+	mRootMarker = 1;
+}
+
+/// <summary>
+/// Makes the node to an inner node (does not change anything with root status)
+/// </summary>
+template <class T, typename CMP>
+void BPTreeNode<T, CMP>::MakeInner()
+{
+	mNodeType = 1;
+}
+
+/// <summary>
+/// Inserts the key value tuple. Shifts all bigger values to the right. Assumes there was space.
+/// Returns the index in which the tuple was inserted.
+/// </summary>
+/// <param name="key">The key.</param>
+/// <param name="value">The value.</param>
+template <class T, typename CMP>
+uint32_t BPTreeNode<T, CMP>::InsertShift( T key, uint64_t value )
+{
+	assert( GetFreeCount() > 0 );
+	uint32_t index = BinarySearch( key );
+	const uint32_t pairsize = sizeof( T ) + sizeof( uint64_t );
+	uint32_t startpos = index * pairsize;
+	uint32_t sizeAfter = (mCount - index) * pairsize;
+
+	memmove( &mData[startpos], &mData[startpos + pairsize], sizeAfter );
+	memcpy( &mData[startpos], &key, sizeof( T ) );
+	memcpy( &mData[startpos + sizeof( T )], &value, sizeof( uint64_t ) );
+	++mCount;
+	return index;
+}
+
+/// <summary>
+/// Erases the index key value tuple and shifts all the entries afterwards to the left.
 /// </summary>
 /// <param name="n">The n.</param>
 template <class T, typename CMP>
-void BPTreeNode<T, CMP>::Erase( uint32_t n )
+void BPTreeNode<T, CMP>::Erase( uint32_t index )
 {
 	if ( n >= mCount )
 	{
@@ -43,8 +140,8 @@ void BPTreeNode<T, CMP>::Erase( uint32_t n )
 	}
 	--mCount; // Decrement amount of entries, this way we safe ourselves 2 minus ops (doesn't matter but we take it)
 	const uint32_t pairsize = sizeof( T ) + sizeof( uint64_t );
-	uint32_t startpos = n*pairsize;
-	uint32_t sizeAfter = (mCount - n) * pairsize;
+	uint32_t startpos = index * pairsize;
+	uint32_t sizeAfter = (mCount - index) * pairsize;
 	memmove( &mData[startpos], &mData[startpos + pairsize], sizeAfter );
 	memset( &mData[mCount], 0, 8 );
 }
@@ -55,26 +152,26 @@ void BPTreeNode<T, CMP>::Erase( uint32_t n )
 /// <param name="n">The n.</param>
 /// <returns></returns>
 template <class T, typename CMP>
-uint64_t BPTreeNode<T, CMP>::GetValue( uint32_t n )
+uint64_t BPTreeNode<T, CMP>::GetValue( uint32_t index )
 {
-	if (n + 1 > count) // prevent uint overflows, just shift the -1
+	if ( index + 1 > mCount ) // prevent uint overflows, just shift the -1
 	{
 		return nextUpper;
 	}
 	const uint32_t pairsize = sizeof( T ) + sizeof( uint64_t );
-	return *reinterpret_cast<uint64_t*>(&mData[n*pairsize] + sizeof(T));
+	return *reinterpret_cast<uint64_t*>(&mData[index * pairsize] + sizeof(T));
 }
 
 /// <summary>
-/// Gets the n-th key. (0 indexed)
+/// Gets the index key. (0 indexed)
 /// </summary>
 /// <param name="n">The n.</param>
 /// <returns></returns>
 template <class T, typename CMP>
-T BPTreeNode<T, CMP>::GetKey( uint32_t n )
+T BPTreeNode<T, CMP>::GetKey( uint32_t index )
 {
 	const uint32_t pairsize = sizeof( T ) + sizeof( uint64_t );
-	return *reinterpret_cast<T*>(&mData[n*pairsize]);
+	return *reinterpret_cast<T*>(&mData[index * pairsize]);
 }
 
 /// <summary>
@@ -97,11 +194,11 @@ uint32_t BPTreeNode<T, CMP>::BinarySearch( T key )
 
 		T currentKey = GetKey( current );
 
-		if ( key < currentKey )
+		if ( CMP(key, currentKey) )
 		{
 			end = current;
 		}
-		else if ( key > currentKey )
+		else if ( CMP(currentKey, key) )
 		{
 			start = current + 1;
 		}
