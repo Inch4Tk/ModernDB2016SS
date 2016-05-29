@@ -27,7 +27,7 @@ struct Schema {
 	  {
 		  std::string attrName;
 		  uint64_t segmentId = DB_TEST_SEGMENT; // If schema will be inserted for every index this will be set correctly
-		  uint64_t pagecount = 0;
+		  uint64_t pagecount = 1;
 		  uint64_t rootId = 0;
 		  bool operator==( const Schema::Relation::Index& other ) const;
 		  bool operator!=( const Schema::Relation::Index& other ) const;

@@ -61,8 +61,6 @@ BPTree<T, CMP>::~BPTree()
 template <class T, typename CMP>
 bool BPTree<T, CMP>::Insert( T key, TID tid )
 {
-	// TODO: initialize
-
 	// Acquire root
 	uint64_t rootId = mCore.GetRootOfIndex( mSegmentId );
 	BufferFrame& frame = mBufferManager.FixPage( rootId, true );
@@ -307,6 +305,7 @@ void BPTree<T, CMP>::PerformInsertSplit( BufferFrame& parent, BufferFrame& leftC
 	BPTreeNode<T, CMP>* leftNode = reinterpret_cast<BPTreeNode<T, CMP>*>(leftChild.GetData());
 	BPTreeNode<T, CMP>* rightNode = reinterpret_cast<BPTreeNode<T, CMP>*>(rightChild.GetData());
 	rightNode->MakeNotRoot();
+	rightNode->SetNextUpper( leftNode->GetNextUpper() );
 	leftNode->SetNextUpper( nextPageId );
 
 	// Perform the actual split

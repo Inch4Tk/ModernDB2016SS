@@ -45,6 +45,14 @@ void DBCore::WipeDatabase()
 		{
 			FileDelete( std::to_string( r.segmentId ) );
 		}
+
+		for ( Schema::Relation::Index& i : r.indices )
+		{
+			if ( FileExists( std::to_string( i.segmentId ) ) )
+			{
+				FileDelete( std::to_string( i.segmentId ) );
+			}
+		}
 	}
 	// Recreate Buffer manager
 	mBufferManager = new BufferManager( 1000 );
@@ -305,6 +313,30 @@ std::unique_ptr<SPSegment> DBCore::GetSPSegment( std::string relationName )
 	}
 	mSchemaLock.UnlockRead();
 	return std::move( s );
+}
+
+/// <summary>
+/// Gets the segment id of the index to attribute with attributeName in relation relationName.
+/// </summary>
+/// <param name="relationName">Name of the relation.</param>
+/// <param name="attributeName">Name of the attribute.</param>
+/// <returns></returns>
+uint64_t DBCore::GetSegmentOfIndex( std::string relationName, std::string attributeName )
+{
+	mSchemaLock.LockRead();
+	uint64_t id = 0;
+	try
+	{
+		Schema::Relation::Index& i = mMasterSchema.GetIndexWithName( relationName, attributeName );
+		id = i.segmentId;
+	}
+	catch ( std::runtime_error& e )
+	{
+		mSchemaLock.UnlockRead();
+		throw std::runtime_error( e.what() );
+	}
+	mSchemaLock.UnlockRead();
+	return id;
 }
 
 /// <summary>

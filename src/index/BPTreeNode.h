@@ -18,6 +18,7 @@ public:
 	uint32_t BinarySearch( T key );
 	bool IsRoot();
 	bool IsLeaf();
+	uint64_t GetNextUpper();
 	uint32_t GetCount();
 	uint32_t GetFreeCount();
 	uint64_t GetValue( uint32_t index );
@@ -40,6 +41,16 @@ private:
 	uint64_t mNextUpper; // If leaf then this contains pageid of next leaf node. If inner this contains pageid of highest page
 	uint8_t mData[DB_PAGE_SIZE - 16]; // key/child or key/tid pairs. Reduce size by the header values
 };
+
+/// <summary>
+/// Gets the next upper.
+/// </summary>
+/// <returns></returns>
+template <class T, typename CMP>
+uint64_t BPTreeNode<T, CMP>::GetNextUpper()
+{
+	return mNextUpper;
+}
 
 /// <summary>
 /// Sets the value at index position. Automatically sets to next upper if out of bounds to the right.
@@ -74,7 +85,15 @@ uint32_t BPTreeNode<T, CMP>::GetCount()
 template <class T, typename CMP>
 T BPTreeNode<T, CMP>::SplitTo( BPTreeNode* other )
 {
-
+	const uint32_t pairsize = sizeof( T ) + sizeof( uint64_t );
+	uint32_t newcountRight = mCount / 2;
+	uint32_t newcountLeft = newcountRight + mCount % 2; // If uneven, give it to left side
+	assert( newcountLeft + newcountRight == mCount );
+	memcpy( other->mData, &this->mData[newcountLeft * pairsize], newcountRight * pairsize );
+	memset( &this->mData[newcountLeft * pairsize], 0, newcountRight * pairsize );
+	mCount = newcountLeft;
+	other->mCount = newcountRight;
+	return GetKey( mCount - 1 );
 }
 
 /// <summary>
