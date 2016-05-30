@@ -25,7 +25,6 @@ set(MY_SRCS
     sql/SchemaParser.cpp
     sql/SchemaTypes.h
     index/BPTree.h
-    index/BPTree.cpp
 	index/BPTreeNode.h
 )
 

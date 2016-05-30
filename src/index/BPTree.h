@@ -40,7 +40,38 @@ private:
 template <class T, typename CMP>
 uint32_t BPTree<T, CMP>::GetSize()
 {
-	return 0; // TODO
+	// Acquire root
+	uint64_t rootId = mCore.GetRootOfIndex( mSegmentId );
+	BufferFrame* frame = &mBufferManager.FixPage( rootId, false );
+	BPTreeNode<T, CMP>* curNode = reinterpret_cast<BPTreeNode<T, CMP>*>(frame->GetData());
+	// Make sure we are still in the root, if not, we retry
+	if ( !curNode->IsRoot() )
+	{
+		mBufferManager.UnfixPage( *frame, false );
+		return Lookup( key );
+	}
+
+	// Traverse the tree until we are in the leftmost leaf
+	while ( !curNode->IsLeaf() )
+	{
+		// Perform latch coupling
+		BufferFrame* oldFrame = frame;
+		frame = &mBufferManager.FixPage( curNode->GetValue( 0 ), false );
+		mBufferManager.UnfixPage( *oldFrame, false );
+		curNode = reinterpret_cast<BPTreeNode<T, CMP>*>(frame->GetData());
+	}
+	uint32_t sizesum = 0;
+	sizesum += curNode->GetCount();
+	while ( curNode->GetNextUpper() != 0 )
+	{
+		BufferFrame* oldFrame = frame;
+		frame = &mBufferManager.FixPage( curNode->GetNextUpper(), false );
+		mBufferManager.UnfixPage( *oldFrame, false );
+		curNode = reinterpret_cast<BPTreeNode<T, CMP>*>(frame->GetData());
+		sizesum += curNode->GetCount();
+	}
+
+	return sizesum;
 }
 
 /// <summary>
