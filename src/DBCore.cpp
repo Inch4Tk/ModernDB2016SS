@@ -14,7 +14,7 @@
 /// </summary>
 DBCore::DBCore()
 {
-	mBufferManager = new BufferManager(1000);
+	mBufferManager = new BufferManager(5000);
 	LoadSchemaFromSeg0();
 }
 
@@ -35,10 +35,17 @@ void DBCore::WipeDatabase()
 	DeleteBufferManager();
 	// We still have the most current masterschema in ram. 
 	// We use this to identify all segments that need to be deleted
-	if ( FileExists( "0" ) )
+	for ( uint32_t i = 0; i < 50; ++i )
 	{
-		FileDelete( "0" );
+		// Just delete some of the first segments, if there are any 
+		// later segments, these need to be found via schema
+		std::string strname = std::to_string( i );
+		if ( FileExists( strname ) )
+		{
+			FileDelete( strname );
+		}
 	}
+	
 	for (Schema::Relation& r : mMasterSchema.relations)
 	{
 		if ( FileExists( std::to_string( r.segmentId ) ) )

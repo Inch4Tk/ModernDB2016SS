@@ -34,47 +34,6 @@ private:
 };
 
 /// <summary>
-/// Gets the size.
-/// </summary>
-/// <returns></returns>
-template <class T, typename CMP>
-uint32_t BPTree<T, CMP>::GetSize()
-{
-	// Acquire root
-	uint64_t rootId = mCore.GetRootOfIndex( mSegmentId );
-	BufferFrame* frame = &mBufferManager.FixPage( rootId, false );
-	BPTreeNode<T, CMP>* curNode = reinterpret_cast<BPTreeNode<T, CMP>*>(frame->GetData());
-	// Make sure we are still in the root, if not, we retry
-	if ( !curNode->IsRoot() )
-	{
-		mBufferManager.UnfixPage( *frame, false );
-		return Lookup( key );
-	}
-
-	// Traverse the tree until we are in the leftmost leaf
-	while ( !curNode->IsLeaf() )
-	{
-		// Perform latch coupling
-		BufferFrame* oldFrame = frame;
-		frame = &mBufferManager.FixPage( curNode->GetValue( 0 ), false );
-		mBufferManager.UnfixPage( *oldFrame, false );
-		curNode = reinterpret_cast<BPTreeNode<T, CMP>*>(frame->GetData());
-	}
-	uint32_t sizesum = 0;
-	sizesum += curNode->GetCount();
-	while ( curNode->GetNextUpper() != 0 )
-	{
-		BufferFrame* oldFrame = frame;
-		frame = &mBufferManager.FixPage( curNode->GetNextUpper(), false );
-		mBufferManager.UnfixPage( *oldFrame, false );
-		curNode = reinterpret_cast<BPTreeNode<T, CMP>*>(frame->GetData());
-		sizesum += curNode->GetCount();
-	}
-
-	return sizesum;
-}
-
-/// <summary>
 /// Initializes a new instance of the <see cref="BPTree{T, CMP}"/> class.
 /// </summary>
 template <class T, typename CMP>
@@ -92,6 +51,50 @@ BPTree<T, CMP>::~BPTree()
 
 }
 
+
+/// <summary>
+/// Gets the size.
+/// </summary>
+/// <returns></returns>
+template <class T, typename CMP>
+uint32_t BPTree<T, CMP>::GetSize()
+{
+	// Acquire root
+	uint64_t rootId = mCore.GetRootOfIndex( mSegmentId );
+	BufferFrame* frame = &mBufferManager.FixPage( rootId, false );
+	BPTreeNode<T, CMP>* curNode = reinterpret_cast<BPTreeNode<T, CMP>*>(frame->GetData());
+	// Make sure we are still in the root, if not, we retry
+	if ( !curNode->IsRoot() )
+	{
+		mBufferManager.UnfixPage( *frame, false );
+		return GetSize();
+	}
+
+	// Traverse the tree until we are in the leftmost leaf
+	while ( !curNode->IsLeaf() )
+	{
+		// Perform latch coupling
+		BufferFrame* oldFrame = frame;
+		frame = &mBufferManager.FixPage( curNode->GetValue( 0 ), false );
+		mBufferManager.UnfixPage( *oldFrame, false );
+		curNode = reinterpret_cast<BPTreeNode<T, CMP>*>(frame->GetData());
+	}
+	uint32_t sizesum = 0;
+	assert( curNode->IsLeaf() );
+	sizesum += curNode->GetCount();
+	while ( curNode->GetNextUpper() != 0 )
+	{
+		BufferFrame* oldFrame = frame;
+		frame = &mBufferManager.FixPage( curNode->GetNextUpper(), false );
+		mBufferManager.UnfixPage( *oldFrame, false );
+		curNode = reinterpret_cast<BPTreeNode<T, CMP>*>(frame->GetData());
+		assert( curNode->IsLeaf() );
+		sizesum += curNode->GetCount();
+	}
+	mBufferManager.UnfixPage( *frame, false );
+	return sizesum;
+}
+
 /// <summary>
 /// Inserts the specified key, TID tuple.
 /// </summary>
@@ -105,6 +108,7 @@ bool BPTree<T, CMP>::Insert( T key, TID tid )
 	uint64_t rootId = mCore.GetRootOfIndex( mSegmentId );
 	BufferFrame* frame = &mBufferManager.FixPage( rootId, true );
 	BPTreeNode<T, CMP>* curNode = reinterpret_cast<BPTreeNode<T, CMP>*>(frame->GetData());
+	BPTreeNode<T, CMP>* parNode = reinterpret_cast<BPTreeNode<T, CMP>*>(frame->GetData());
 	// Make sure we are still in the root, if not, we retry
 	if ( !curNode->IsRoot() )
 	{
@@ -131,10 +135,18 @@ bool BPTree<T, CMP>::Insert( T key, TID tid )
 			parentFrameDirty = true;
 			frameDirty = true;
 			InnerSplit( key, &parentFrame, &frame, &rightSideFrame );
+			// Redo the current node, since we might have swapped left and right direction
+			curNode = reinterpret_cast<BPTreeNode<T, CMP>*>(frame->GetData());
 			assert( *parentFrame != *frame );
 		}
 
 		uint32_t index = curNode->BinarySearch( key );
+		//assert( curNode->GetValue( index ) >= mSegmentId );
+		if ( curNode->GetValue( index ) < mSegmentId )
+		{
+			index = curNode->BinarySearch( key );
+		}
+		
 		// Perform latch coupling
 		if ( *parentFrame != *frame )
 		{
@@ -146,6 +158,7 @@ bool BPTree<T, CMP>::Insert( T key, TID tid )
 		parentFrameDirty = frameDirty;
 		frameDirty = false;
 		curNode = reinterpret_cast<BPTreeNode<T, CMP>*>(frame->GetData());
+		parNode = reinterpret_cast<BPTreeNode<T, CMP>*>(parentFrame->GetData());
 	}
 
 	// State: We found a leaf. We performed splits on all inner pages that were full, to make sure we can always insert another entry to parent.
@@ -224,6 +237,7 @@ bool BPTree<T, CMP>::Erase( T key )
 	while ( !curNode->IsLeaf() )
 	{
 		uint32_t index = curNode->BinarySearch( key );
+		assert( curNode->GetValue( index ) >= mSegmentId );
 		// Perform latch coupling
 		if (*oldFrame != *frame)
 		{
@@ -280,7 +294,12 @@ bool BPTree<T, CMP>::Erase( T key )
 	}
 
 	// Normal case, we just remove the value and let go of the locks
-	assert( !comparer( foundKey, key ) && !comparer( key, foundKey ) );
+	if ( comparer( foundKey, key ) || comparer( key, foundKey ) ) // neq
+	{
+		mBufferManager.UnfixPage( *oldFrame, false );
+		mBufferManager.UnfixPage( *frame, false );
+		return false;
+	}
 	curNode->Erase( index );
 
 	mBufferManager.UnfixPage( *oldFrame, false );
@@ -312,6 +331,7 @@ std::pair<bool, TID> BPTree<T, CMP>::Lookup( T key )
 	while (!curNode->IsLeaf())
 	{
 		uint32_t index = curNode->BinarySearch( key );
+		assert( curNode->GetValue( index ) >= mSegmentId );
 		// Perform latch coupling
 		BufferFrame* oldFrame = frame;
 		frame = &mBufferManager.FixPage( curNode->GetValue( index ), false );
@@ -390,10 +410,13 @@ void BPTree<T, CMP>::InnerSplit( T key, BufferFrame** parent, BufferFrame** left
 	CMP comparer;
 	BPTreeNode<T, CMP>* leftNode = reinterpret_cast<BPTreeNode<T, CMP>*>((*leftChild)->GetData());
 	BPTreeNode<T, CMP>* rightNode = reinterpret_cast<BPTreeNode<T, CMP>*>((*rightChild)->GetData());
+	assert( !leftNode->IsLeaf() );
 	
 	rightNode->MakeInner();
 	rightNode->MakeNotRoot();
 	T leftMaxKey = leftNode->SplitTo( rightNode );
+	rightNode->SetNextUpper( leftNode->GetNextUpper() );
+	leftNode->SetNextUpper( 0 ); // Empty value, since we should have taken the right path instead of ending up here
 
 	// Check which side will be the correct side for later
 	bool leftCorrect = true;
@@ -410,7 +433,7 @@ void BPTree<T, CMP>::InnerSplit( T key, BufferFrame** parent, BufferFrame** left
 		assert( **parent == **leftChild );
 		uint64_t rootPageId = mCore.AddPagesToIndex( mSegmentId, 1 );
 		*parent = &mBufferManager.FixPage( rootPageId, true );
-		BPTreeNode<T, CMP>* parentNode = reinterpret_cast<BPTreeNode<T, CMP>*>((*rightChild)->GetData());
+		BPTreeNode<T, CMP>* parentNode = reinterpret_cast<BPTreeNode<T, CMP>*>((*parent)->GetData());
 		leftNode->MakeNotRoot();
 		parentNode->MakeInner();
 		parentNode->InsertShift( leftMaxKey, (*leftChild)->GetPageId() );
@@ -419,17 +442,18 @@ void BPTree<T, CMP>::InnerSplit( T key, BufferFrame** parent, BufferFrame** left
 	}
 	else
 	{
-		// Case where we are not in the root, so we can assume there is space above us and we
+		// Case where we are not in the root, so we can assume there is space above us,
+		// because we split everything without space while traversing and we
 		// already have the parent frame in parentFrame
 		assert( **parent != **leftChild );
-		BPTreeNode<T, CMP>* parentNode = reinterpret_cast<BPTreeNode<T, CMP>*>((*rightChild)->GetData());
+		BPTreeNode<T, CMP>* parentNode = reinterpret_cast<BPTreeNode<T, CMP>*>((*parent)->GetData());
 		uint32_t insIndex = parentNode->InsertShift( leftMaxKey, (*leftChild)->GetPageId() );
-		parentNode->SetValue( insIndex, (*rightChild)->GetPageId() );
+		parentNode->SetValue( insIndex + 1, (*rightChild)->GetPageId() );
 	}
 
 	if ( !leftCorrect )
 	{
-		// Swap left child and right child
+		// Swap left child and right child so the correct path is in left child, even though we might go down right child
 		BufferFrame* tmp = *leftChild;
 		*leftChild = *rightChild;
 		*rightChild = tmp;

@@ -1,6 +1,7 @@
 #include "Schema.h"
 
 #include "utility/helpers.h"
+#include "buffer/BufferManager.h"
 
 #include <algorithm>
 #include <sstream>
@@ -144,6 +145,7 @@ void Schema::MergeSchema( Schema& other )
 			success = success && ins3.second;
 			assert( ins3.second ); // Make sure all used segments are unique
 			io.segmentId = curUnused;
+			io.rootId = BufferManager::MergePageId( io.segmentId, 0 );
 		}
 
 		relations.push_back( ro );

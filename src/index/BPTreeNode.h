@@ -63,6 +63,7 @@ void BPTreeNode<T, CMP>::SetValue( uint32_t index, uint64_t value )
 	if ( index + 1 > mCount ) // prevent uint overflows, just shift the -1
 	{
 		mNextUpper = value;
+		return;
 	}
 	const uint32_t pairsize = sizeof( T ) + sizeof( uint64_t );
 	*reinterpret_cast<uint64_t*>(&mData[index * pairsize] + sizeof( T )) = value;
@@ -139,7 +140,7 @@ uint32_t BPTreeNode<T, CMP>::InsertShift( T key, uint64_t value )
 	uint32_t startpos = index * pairsize;
 	uint32_t sizeAfter = (mCount - index) * pairsize;
 
-	memmove( &mData[startpos], &mData[startpos + pairsize], sizeAfter );
+	memmove( &mData[startpos + pairsize], &mData[startpos], sizeAfter );
 	memcpy( &mData[startpos], &key, sizeof( T ) );
 	memcpy( &mData[startpos + sizeof( T )], &value, sizeof( uint64_t ) );
 	++mCount;
@@ -162,7 +163,7 @@ void BPTreeNode<T, CMP>::Erase( uint32_t index )
 	uint32_t startpos = index * pairsize;
 	uint32_t sizeAfter = (mCount - index) * pairsize;
 	memmove( &mData[startpos], &mData[startpos + pairsize], sizeAfter );
-	memset( &mData[mCount], 0, 8 );
+	memset( &mData[mCount * pairsize], 0, pairsize );
 }
 
 /// <summary>

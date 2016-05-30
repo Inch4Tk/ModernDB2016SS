@@ -85,7 +85,7 @@ void test( uint64_t n )
 {
 	DBCore core;
 	core.WipeDatabase();
-	// Wipe old sql schema and data to get consisten records
+	// Wipe old sql schema and data to get consistent records
 	// Then create new sql schema, just containing large strings, currently
 	// this is not perfectly tied together anyways, so insert does not 
 	// care that our records are not correct, but we still need a relation
@@ -99,8 +99,11 @@ void test( uint64_t n )
 
 	// Insert values
 	for ( uint64_t i = 0; i < n; ++i )
-		bTree.Insert( getKey<T>( i ), static_cast<TID>(i*i) );
-	assert( bTree.GetSize() == n );
+	{
+		bTree.Insert( getKey<T>( i ), static_cast<TID>(i*i) );	
+	}
+	uint32_t btreeSize = bTree.GetSize();
+	assert( btreeSize == n );
 
 	// Check if they can be retrieved
 	for ( uint64_t i = 0; i < n; ++i )
