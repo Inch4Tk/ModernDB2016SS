@@ -153,7 +153,7 @@ uint32_t BPTreeNode<T, CMP>::InsertShift( T key, uint64_t value )
 template <class T, typename CMP>
 void BPTreeNode<T, CMP>::Erase( uint32_t index )
 {
-	if ( n >= mCount )
+	if ( index >= mCount )
 	{
 		return;
 	}
@@ -175,7 +175,7 @@ uint64_t BPTreeNode<T, CMP>::GetValue( uint32_t index )
 {
 	if ( index + 1 > mCount ) // prevent uint overflows, just shift the -1
 	{
-		return nextUpper;
+		return mNextUpper;
 	}
 	const uint32_t pairsize = sizeof( T ) + sizeof( uint64_t );
 	return *reinterpret_cast<uint64_t*>(&mData[index * pairsize] + sizeof(T));
@@ -201,6 +201,7 @@ T BPTreeNode<T, CMP>::GetKey( uint32_t index )
 template <class T, typename CMP>
 uint32_t BPTreeNode<T, CMP>::BinarySearch( T key )
 {
+	CMP comparer;
 	uint32_t start = 0;
 	uint32_t end = mCount;
 	while (true)
@@ -213,11 +214,11 @@ uint32_t BPTreeNode<T, CMP>::BinarySearch( T key )
 
 		T currentKey = GetKey( current );
 
-		if ( CMP(key, currentKey) )
+		if ( comparer(key, currentKey) )
 		{
 			end = current;
 		}
-		else if ( CMP(currentKey, key) )
+		else if ( comparer(currentKey, key) )
 		{
 			start = current + 1;
 		}

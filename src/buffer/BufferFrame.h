@@ -26,6 +26,8 @@ public:
 
 	bool IsDirty() const;
 
+	bool operator==( const BufferFrame& other ) const;
+	bool operator!=( const BufferFrame& other ) const;
 private:
 	// Status
 	// These are conservatively atomic, we could probably get away with non-atomics,

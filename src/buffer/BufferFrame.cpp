@@ -57,6 +57,33 @@ bool BufferFrame::IsDirty() const
 }
 
 /// <summary>
+/// Compares two buffer frames for inequality
+/// </summary>
+/// <param name="other">The other.</param>
+/// <returns></returns>
+bool BufferFrame::operator!=( const BufferFrame& other ) const
+{
+	return !(*this == other);
+}
+
+/// <summary>
+/// Compares two buffer frames for equality
+/// </summary>
+/// <param name="other">The other.</param>
+/// <returns></returns>
+bool BufferFrame::operator==( const BufferFrame& other ) const
+{
+	// Skips lock state, but this is more a convenience function for debugging than a true test.
+	return mLoaded.load() == other.mLoaded.load() &&
+		mDirty.load() == other.mDirty.load() &&
+		mExclusive.load() == other.mExclusive.load() &&
+		mSharedBy.load() == other.mSharedBy.load() &&
+		mEvictionScore.load() == other.mEvictionScore.load() &&
+		mPageId == other.mPageId &&
+		mData == other.mData;
+}
+
+/// <summary>
 /// Determines whether the buffer frame is fixed, at the time of the call. This is not 100% certain to hold until the value can be used.
 /// </summary>
 /// <returns></returns>
