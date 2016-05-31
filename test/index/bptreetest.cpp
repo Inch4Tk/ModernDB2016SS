@@ -90,6 +90,7 @@ public:
 	virtual void TearDown() override
 	{
 		SDELETE( core );
+		SDELETE( bTree );
 	}
 	DBCore* core;
 	BPTree<typename Types::T, typename Types::CMP>* bTree;
@@ -98,8 +99,8 @@ public:
 template <typename A, typename B>
 struct TypeDefinitions
 {
-	typedef typename A T;
-	typedef typename B CMP;
+	typedef A T;
+	typedef B CMP;
 };
 
 typedef ::testing::Types<TypeDefinitions<uint64_t, MyCustomUInt64Cmp>,
@@ -114,16 +115,16 @@ TYPED_TEST( BPTreeTest, BPTreeFull )
 	// Insert values
 	for ( uint64_t i = 0; i < n; ++i )
 	{
-		bTree->Insert( getKey<typename TypeParam::T>( i ), static_cast<TID>(i*i) );
+		this->bTree->Insert( getKey<typename TypeParam::T>( i ), static_cast<TID>(i*i) );
 	}
-	uint32_t btreeSize = bTree->GetSize();
+	uint32_t btreeSize = this->bTree->GetSize();
 	EXPECT_EQ( btreeSize, n );
 
 	// Check if they can be retrieved
 	for ( uint64_t i = 0; i < n; ++i )
 	{
 		std::pair<bool, TID> foundTID;
-		foundTID = bTree->Lookup( getKey<typename TypeParam::T>( i ) );
+		foundTID = this->bTree->Lookup( getKey<typename TypeParam::T>( i ) );
 		EXPECT_TRUE( foundTID.first );
 		EXPECT_EQ( foundTID.second, i*i );
 	}
@@ -131,13 +132,13 @@ TYPED_TEST( BPTreeTest, BPTreeFull )
 	// Delete some values
 	for ( uint64_t i = 0; i < n; ++i )
 		if ( (i % 7) == 0 )
-			bTree->Erase( getKey<typename TypeParam::T>( i ) );
+			this->bTree->Erase( getKey<typename TypeParam::T>( i ) );
 
 	// Check if the right ones have been deleted
 	for ( uint64_t i = 0; i < n; ++i )
 	{
 		std::pair<bool, TID> foundTID;
-		foundTID = bTree->Lookup( getKey<typename TypeParam::T>( i ) );
+		foundTID = this->bTree->Lookup( getKey<typename TypeParam::T>( i ) );
 		if ( (i % 7) == 0 )
 		{
 			EXPECT_TRUE( !foundTID.first );
@@ -151,6 +152,6 @@ TYPED_TEST( BPTreeTest, BPTreeFull )
 
 	// Delete everything
 	for ( uint64_t i = 0; i < n; ++i )
-		bTree->Erase( getKey<typename TypeParam::T>( i ) );
-	EXPECT_EQ( bTree->GetSize(), 0 );
+		this->bTree->Erase( getKey<typename TypeParam::T>( i ) );
+	EXPECT_EQ( this->bTree->GetSize(), 0 );
 }

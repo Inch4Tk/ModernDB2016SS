@@ -109,7 +109,6 @@ bool BPTree<T, CMP>::Insert( T key, TID tid )
 	uint64_t rootId = mCore.GetRootOfIndex( mSegmentId );
 	BufferFrame* frame = &mBufferManager.FixPage( rootId, true );
 	BPTreeNode<T, CMP>* curNode = reinterpret_cast<BPTreeNode<T, CMP>*>(frame->GetData());
-	BPTreeNode<T, CMP>* parNode = reinterpret_cast<BPTreeNode<T, CMP>*>(frame->GetData());
 	// Make sure we are still in the root, if not, we retry
 	if ( !curNode->IsRoot() )
 	{
@@ -159,7 +158,6 @@ bool BPTree<T, CMP>::Insert( T key, TID tid )
 		parentFrameDirty = frameDirty;
 		frameDirty = false;
 		curNode = reinterpret_cast<BPTreeNode<T, CMP>*>(frame->GetData());
-		parNode = reinterpret_cast<BPTreeNode<T, CMP>*>(parentFrame->GetData());
 	}
 
 	// State: We found a leaf. We performed splits on all inner pages that were full, to make sure we can always insert another entry to parent.

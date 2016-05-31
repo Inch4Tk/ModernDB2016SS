@@ -46,10 +46,11 @@ Since some assignment validations files use asserts, use Debug build.
 To validate assignments configure the cmake project with an additional flag like this:
 ```
 mkdir -p build && cd build
-cmake -G "Unix Makefiles" -DASSIGN2_VALID=ON -DASSIGN3_VALID=ON -DCMAKE_BUILD_TYPE=Debug ..
+cmake -G "Unix Makefiles" -DASSIGN2_VALID=ON -DASSIGN3_VALID=ON -DASSIGN4_VALID=ON -DCMAKE_BUILD_TYPE=Debug ..
 make all
 ./assignment2 <pagesOnDisk> <pagesInRAM> <threads>
 ./assignment3
+./assignment4 <optional: n>
 ```
 Can also skip single assignments by not adding the -DASSIGNX_VALID=ON flag.
 Note: Corresponding Assignment 3 unit-test is actually stricter/more challenging than the modified provided validation file.
@@ -63,7 +64,7 @@ This starts up the database (currently nothing happens, database starts and shut
 ## Tests
 Runs all tests with googletest. Beware, as running tests will wipe the database (including metadata), 
 provided tests were run from the same folder as the database files.
-(IMPORTANT: This way you can also check a correct Assignment 2 and 3 output. 
+(IMPORTANT: This way you can also check a correct Assignment 2, 3 and 4 output. 
 However, tests appear to be slower on unix than direct console calls of the validation file (may just be the VM though))
 ```
 ./moderndb_test
