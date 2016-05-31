@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 #include <utility>
+#include <cassert>
 
 /// <summary>
 /// Parameterized B+ Tree implementation. Operations are reentrant.
