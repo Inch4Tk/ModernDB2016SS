@@ -3,8 +3,16 @@
 #include "Register.h"
 #include "DBCore.h"
 #include "buffer/BufferManager.h"
+#include "buffer/BufferFrame.h"
 
-TableScanOperator::TableScanOperator( DBCore& core, BufferManager& bm ) : mCore(core), mBufferManager(bm)
+TableScanOperator::TableScanOperator( const std::string& relationName, DBCore& core, BufferManager& bm ) : 
+	mCore(core), mBufferManager(bm)
+{
+	mSegmentId = mCore.GetSegmentIdOfRelation(relationName);
+}
+
+TableScanOperator::TableScanOperator( uint64_t segmentId, DBCore& core, BufferManager& bm ):
+	mCore( core ), mBufferManager( bm ), mSegmentId( segmentId )
 {
 
 }
@@ -19,7 +27,13 @@ TableScanOperator::~TableScanOperator()
 /// </summary>
 void TableScanOperator::Open()
 {
-
+	if (mCurFrame)
+	{
+		mBufferManager.UnfixPage( *mCurFrame, false );
+	}
+	mCurPageId = 0;
+	mCurSlot = 0;
+	mBufferManager.FixPage( mCurPageId, true );
 }
 
 /// <summary>
@@ -45,5 +59,11 @@ std::vector<Register*> TableScanOperator::GetOutput()
 /// </summary>
 void TableScanOperator::Close()
 {
-
+	if( mCurFrame )
+	{
+		mBufferManager.UnfixPage( *mCurFrame, false );
+		mCurFrame = nullptr;
+	}
+	mCurPageId = 0;
+	mCurSlot = 0;
 }

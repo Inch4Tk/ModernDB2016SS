@@ -35,8 +35,9 @@ public:
 	uint64_t GetRootOfIndex( uint64_t segmentId );
 	void SetRootOfIndex( uint64_t segmentId, uint64_t rootId );
 	std::unique_ptr<SPSegment> GetSPSegment( uint64_t segmentId );
-	std::unique_ptr<SPSegment> GetSPSegment( std::string relationName );
-	uint64_t GetSegmentOfIndex( std::string relationName, std::string attributeName );
+	std::unique_ptr<SPSegment> GetSPSegment( const std::string& relationName );
+	uint64_t GetSegmentIdOfRelation( const std::string& relationName );
+	uint64_t GetSegmentOfIndex( const std::string& relationName, const std::string& attributeName );
 
 private:
 	RWLock mSchemaLock;

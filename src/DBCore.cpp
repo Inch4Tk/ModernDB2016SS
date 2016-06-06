@@ -304,7 +304,7 @@ std::unique_ptr<SPSegment> DBCore::GetSPSegment( uint64_t segmentId )
 /// </summary>
 /// <param name="relationName">Name of the relation.</param>
 /// <returns></returns>
-std::unique_ptr<SPSegment> DBCore::GetSPSegment( std::string relationName )
+std::unique_ptr<SPSegment> DBCore::GetSPSegment( const std::string& relationName )
 {
 	mSchemaLock.LockRead();
 	std::unique_ptr<SPSegment> s(nullptr);
@@ -323,12 +323,35 @@ std::unique_ptr<SPSegment> DBCore::GetSPSegment( std::string relationName )
 }
 
 /// <summary>
+/// Gets the segment identifier of relation.
+/// </summary>
+/// <param name="relationName">Name of the relation.</param>
+/// <returns></returns>
+uint64_t DBCore::GetSegmentIdOfRelation( const std::string& relationName )
+{
+	mSchemaLock.LockRead();
+	uint64_t id = 0;
+	try
+	{
+		Schema::Relation& r = mMasterSchema.GetRelationWithName( relationName );
+		id = r.segmentId;
+	}
+	catch( std::runtime_error& e )
+	{
+		mSchemaLock.UnlockRead();
+		throw std::runtime_error( e.what() );
+	}
+	mSchemaLock.UnlockRead();
+	return id;
+}
+
+/// <summary>
 /// Gets the segment id of the index to attribute with attributeName in relation relationName.
 /// </summary>
 /// <param name="relationName">Name of the relation.</param>
 /// <param name="attributeName">Name of the attribute.</param>
 /// <returns></returns>
-uint64_t DBCore::GetSegmentOfIndex( std::string relationName, std::string attributeName )
+uint64_t DBCore::GetSegmentOfIndex( const std::string& relationName, const std::string& attributeName )
 {
 	mSchemaLock.LockRead();
 	uint64_t id = 0;
