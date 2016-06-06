@@ -32,6 +32,14 @@ set(MY_SRCS
 	query/QueryOperator.cpp
 	query/PrintOperator.h
 	query/PrintOperator.cpp
+	query/TableScanOperator.h
+	query/TableScanOperator.cpp
+	query/SelectOperator.h
+	query/SelectOperator.cpp
+	query/ProjectionOperator.h
+	query/ProjectionOperator.cpp
+	query/HashJoinOperator.h
+	query/HashJoinOperator.cpp
 )
 
 # Add a library containing project source and link to main executable

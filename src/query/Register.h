@@ -2,7 +2,7 @@
 #ifndef REGISTER_H
 #define REGISTER_H
 
-#include "sql/SchemaTypes.h";
+#include "sql/SchemaTypes.h"
 
 class Register
 {

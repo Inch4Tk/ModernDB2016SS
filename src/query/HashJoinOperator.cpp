@@ -1,13 +1,13 @@
-#include "PrintOperator.h"
+#include "HashJoinOperator.h"
 
 #include "Register.h"
 
-PrintOperator::PrintOperator( QueryOperator& input ) : mInput(input)
+HashJoinOperator::HashJoinOperator( QueryOperator& input ) : mInput(input)
 {
 
 }
 
-PrintOperator::~PrintOperator()
+HashJoinOperator::~HashJoinOperator()
 {
 
 }
@@ -15,7 +15,7 @@ PrintOperator::~PrintOperator()
 /// <summary>
 /// Opens this instance.
 /// </summary>
-void PrintOperator::Open()
+void HashJoinOperator::Open()
 {
 
 }
@@ -24,16 +24,16 @@ void PrintOperator::Open()
 /// Produces the next tuple in register
 /// </summary>
 /// <returns></returns>
-bool PrintOperator::Next()
+bool HashJoinOperator::Next()
 {
-	return true;
+	return false;
 }
 
 /// <summary>
 /// Gets the output.
 /// </summary>
 /// <returns></returns>
-std::vector<Register*> PrintOperator::GetOutput()
+std::vector<Register*> HashJoinOperator::GetOutput()
 {
 	return std::vector<Register*>();
 }
@@ -41,7 +41,7 @@ std::vector<Register*> PrintOperator::GetOutput()
 /// <summary>
 /// Closes this instance.
 /// </summary>
-void PrintOperator::Close()
+void HashJoinOperator::Close()
 {
 
 }

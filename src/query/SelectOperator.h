@@ -1,6 +1,6 @@
 #pragma once
-#ifndef PRINT_OPERATOR_H
-#define PRINT_OPERATOR_H
+#ifndef SELECT_OPERATOR_H
+#define SELECT_OPERATOR_H
 
 #include "query/QueryOperator.h"
 #include <vector>
@@ -8,12 +8,12 @@
 // Forwards
 class Register;
 
-// Prints out all input tuples in a human-readable format.
-class PrintOperator : QueryOperator
+// Implements predicates of the form a = c where a is an attribute and c is a constant
+class SelectOperator : QueryOperator
 {
 public:
-	PrintOperator(QueryOperator& input);
-	~PrintOperator();
+	SelectOperator(QueryOperator& input);
+	~SelectOperator();
 	
 	void Open() override;
 	bool Next() override;

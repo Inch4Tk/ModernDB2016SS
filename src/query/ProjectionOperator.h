@@ -1,6 +1,6 @@
 #pragma once
-#ifndef PRINT_OPERATOR_H
-#define PRINT_OPERATOR_H
+#ifndef PROJECTION_OPERATOR_H
+#define PROJECTION_OPERATOR_H
 
 #include "query/QueryOperator.h"
 #include <vector>
@@ -8,12 +8,12 @@
 // Forwards
 class Register;
 
-// Prints out all input tuples in a human-readable format.
-class PrintOperator : QueryOperator
+// Projects to a subset of the input schema.
+class ProjectionOperator: QueryOperator
 {
 public:
-	PrintOperator(QueryOperator& input);
-	~PrintOperator();
+	ProjectionOperator(QueryOperator& input);
+	~ProjectionOperator();
 	
 	void Open() override;
 	bool Next() override;

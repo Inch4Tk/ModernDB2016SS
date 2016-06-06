@@ -1,13 +1,13 @@
-#include "PrintOperator.h"
+#include "SelectOperator.h"
 
 #include "Register.h"
 
-PrintOperator::PrintOperator( QueryOperator& input ) : mInput(input)
+SelectOperator::SelectOperator( QueryOperator& input ) : mInput(input)
 {
 
 }
 
-PrintOperator::~PrintOperator()
+SelectOperator::~SelectOperator()
 {
 
 }
@@ -15,7 +15,7 @@ PrintOperator::~PrintOperator()
 /// <summary>
 /// Opens this instance.
 /// </summary>
-void PrintOperator::Open()
+void SelectOperator::Open()
 {
 
 }
@@ -24,16 +24,16 @@ void PrintOperator::Open()
 /// Produces the next tuple in register
 /// </summary>
 /// <returns></returns>
-bool PrintOperator::Next()
+bool SelectOperator::Next()
 {
-	return true;
+	return false;
 }
 
 /// <summary>
 /// Gets the output.
 /// </summary>
 /// <returns></returns>
-std::vector<Register*> PrintOperator::GetOutput()
+std::vector<Register*> SelectOperator::GetOutput()
 {
 	return std::vector<Register*>();
 }
@@ -41,7 +41,7 @@ std::vector<Register*> PrintOperator::GetOutput()
 /// <summary>
 /// Closes this instance.
 /// </summary>
-void PrintOperator::Close()
+void SelectOperator::Close()
 {
 
 }
