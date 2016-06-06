@@ -26,6 +26,12 @@ set(MY_SRCS
     sql/SchemaTypes.h
     index/BPTree.h
 	index/BPTreeNode.h
+	query/Register.h
+	query/Register.cpp
+	query/QueryOperator.h
+	query/QueryOperator.cpp
+	query/PrintOperator.h
+	query/PrintOperator.cpp
 )
 
 # Add a library containing project source and link to main executable

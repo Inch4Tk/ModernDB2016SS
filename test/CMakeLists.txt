@@ -7,6 +7,7 @@ set(MY_TEST_SRCS
     utility/rwlocktest.cpp
     sql/schematest.cpp
     index/bptreetest.cpp
+	query/querytest.cpp
 )
 
 include_directories(
