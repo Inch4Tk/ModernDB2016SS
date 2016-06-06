@@ -2,7 +2,7 @@
 
 #include "Register.h"
 
-PrintOperator::PrintOperator( QueryOperator& input ) : mInput(input)
+PrintOperator::PrintOperator( QueryOperator& input, std::iostream& outstream ) : mInput(input), mOutstream(outstream)
 {
 
 }
@@ -17,16 +17,39 @@ PrintOperator::~PrintOperator()
 /// </summary>
 void PrintOperator::Open()
 {
-
+	mInput.Open();
+	mInputRegister = mInput.GetOutput();
+	mOutputRegister = mInputRegister;
 }
 
 /// <summary>
-/// Produces the next tuple in register
+/// Produces the next tuple in register of GetOutput and also prints out the tuple
 /// </summary>
 /// <returns></returns>
 bool PrintOperator::Next()
 {
-	return true;
+	if ( mInput.Next() )
+	{
+		// Passthrough output register
+		for( Register* r : mInputRegister )
+		{
+			if( r->GetType() == SchemaTypes::Tag::Char )
+			{
+				mOutstream << r->GetString();
+			}
+			else if( r->GetType() == SchemaTypes::Tag::Integer )
+			{
+				mOutstream << r->GetInteger();
+			}
+			if (mInputRegister.back() != r)
+			{
+				mOutstream << ", ";
+			}
+		}
+		mOutstream << std::endl;
+		return true;
+	}
+	return false;
 }
 
 /// <summary>
@@ -35,7 +58,7 @@ bool PrintOperator::Next()
 /// <returns></returns>
 std::vector<Register*> PrintOperator::GetOutput()
 {
-	return std::vector<Register*>();
+	return mOutputRegister;
 }
 
 /// <summary>
@@ -43,5 +66,5 @@ std::vector<Register*> PrintOperator::GetOutput()
 /// </summary>
 void PrintOperator::Close()
 {
-
+	mInput.Close();
 }

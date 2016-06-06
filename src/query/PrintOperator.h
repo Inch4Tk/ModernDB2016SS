@@ -4,6 +4,7 @@
 
 #include "query/QueryOperator.h"
 #include <vector>
+#include <iostream>
 
 // Forwards
 class Register;
@@ -12,7 +13,7 @@ class Register;
 class PrintOperator : QueryOperator
 {
 public:
-	PrintOperator(QueryOperator& input);
+	PrintOperator( QueryOperator& input, std::iostream& outstream );
 	~PrintOperator();
 	
 	void Open() override;
@@ -22,6 +23,8 @@ public:
 
 private:
 	QueryOperator& mInput;
-
+	std::iostream& mOutstream;
+	std::vector<Register*> mInputRegister;
+	std::vector<Register*> mOutputRegister;
 };
 #endif
