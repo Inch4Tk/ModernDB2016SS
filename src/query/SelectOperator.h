@@ -9,7 +9,7 @@
 class Register;
 
 // Implements predicates of the form a = c where a is an attribute and c is a constant
-class SelectOperator : QueryOperator
+class SelectOperator : public QueryOperator
 {
 public:
 	SelectOperator(QueryOperator& input);

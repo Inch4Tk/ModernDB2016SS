@@ -4,7 +4,9 @@
 #include "utility/helpers.h"
 
 #include "query/Register.h"
+#include "query/QueryOperator.h"
 #include "query/TableScanOperator.h"
+#include "query/PrintOperator.h"
 
 #include "gtest/gtest.h"
 
@@ -101,7 +103,7 @@ public:
 		{
 			spB->Insert( GenerateRecordB() );
 		}
-		// Special relation that is the same as dbtestA, but used in tests where we need to preserve the order of inserts
+		// Special relation that is the same as dbtestA, but used in tests where we need to preserve the order of inserts for easier testing
 		// (inserts can swap order if strings have different sizes, so one tuple still fits a hole that another doesn't)
 		std::unique_ptr<SPSegment> spOrderpreserv = core->GetSPSegment( "dbtestOrderPreserv" );
 		for ( uint32_t i = 0; i < 750; ++i )
@@ -353,4 +355,26 @@ TEST_F( QueryTest, TableScanAfterDeleteUpdates )
 	}
 
 	op.Close();
+}
+
+// Test print operator
+TEST_F(QueryTest, PrintOperatorQuery)
+{
+	// Extract the string to every tuple and test it against the order preserved db
+	TableScanOperator tsop( "dbtestOrderPreserv", *core, *core->GetBufferManager() );
+	std::stringstream ss;
+	PrintOperator prop( tsop, ss );
+	prop.Open();
+	std::vector<Register*> registers = prop.GetOutput();
+	uint32_t curidx = 0;
+	while ( prop.Next() )
+	{
+		std::string got( std::istreambuf_iterator<char>( ss ), {} );
+		std::string expected = nameOrder[curidx] + ", " + 
+			std::to_string(ageOrder[curidx]) + ", " +
+			somefieldOrder[curidx] + ", " + std::to_string( lastfieldOrder[curidx]) + "\n";
+		EXPECT_EQ( expected, got );
+		++curidx;
+	}
+	prop.Close();
 }

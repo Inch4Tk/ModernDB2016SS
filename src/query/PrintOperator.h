@@ -10,7 +10,7 @@
 class Register;
 
 // Prints out all input tuples in a human-readable format.
-class PrintOperator : QueryOperator
+class PrintOperator : public QueryOperator
 {
 public:
 	PrintOperator( QueryOperator& input, std::iostream& outstream );

@@ -12,7 +12,7 @@ class BufferFrame;
 class DBCore;
 
 // Scans a relation and produces all tuples as output.
-class TableScanOperator : QueryOperator
+class TableScanOperator : public QueryOperator
 {
 public:
 	TableScanOperator( const std::string& relationName, DBCore& core, BufferManager& bm );

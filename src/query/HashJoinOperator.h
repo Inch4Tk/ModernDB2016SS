@@ -10,7 +10,7 @@ class Register;
 
 // Compute inner join by storing left input in main memory, then find matches 
 // for each tuple from the right side. The predicate is of the form left.a = right.b.
-class HashJoinOperator : QueryOperator
+class HashJoinOperator : public QueryOperator
 {
 public:
 	HashJoinOperator(QueryOperator& input);

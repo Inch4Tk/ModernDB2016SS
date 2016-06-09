@@ -9,7 +9,7 @@
 class Register;
 
 // Projects to a subset of the input schema.
-class ProjectionOperator: QueryOperator
+class ProjectionOperator: public QueryOperator
 {
 public:
 	ProjectionOperator(QueryOperator& input);
