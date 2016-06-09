@@ -6,7 +6,9 @@
 
 class Register
 {
+	friend class TableScanOperator;
 public:
+	std::string GetAttributeName();
 	Integer GetInteger();
 	std::string GetString();
 
@@ -17,8 +19,9 @@ public:
 
 	// No need for hash since using unordered map later
 private:
-	Integer intVar;
-	std::string stringVar;
-	SchemaTypes::Tag type;
+	Integer mIntVar;
+	std::string mStringVar;
+	SchemaTypes::Tag mType;
+	std::string mAttrName;
 };
 #endif

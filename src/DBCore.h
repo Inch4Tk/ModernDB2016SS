@@ -28,6 +28,7 @@ public:
 
 	BufferManager* GetBufferManager();
 	const Schema* GetSchema();
+	std::vector<Schema::Relation::Attribute> GetRelationAttributes( uint64_t segmentId );
 	uint64_t GetPagesOfRelation( uint64_t segmentId );
 	uint64_t AddPagesToRelation( uint64_t segmentId, uint64_t numPages );
 	uint64_t GetPagesOfIndex( uint64_t segmentId );

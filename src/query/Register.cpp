@@ -1,16 +1,25 @@
 #include "Register.h"
 
 /// <summary>
+/// Gets the name of the attribute this register contains;
+/// </summary>
+/// <returns></returns>
+std::string Register::GetAttributeName()
+{
+	return mAttrName;
+}
+
+/// <summary>
 /// Gets the integer.
 /// </summary>
 /// <returns></returns>
 Integer Register::GetInteger()
 {
-	if (this->type == SchemaTypes::Tag::Char)
+	if (this->mType == SchemaTypes::Tag::Char)
 	{
 		return INT_MIN;
 	}
-	return intVar;
+	return mIntVar;
 }
 
 /// <summary>
@@ -19,11 +28,11 @@ Integer Register::GetInteger()
 /// <returns></returns>
 std::string Register::GetString()
 {
-	if( this->type == SchemaTypes::Tag::Integer )
+	if( this->mType == SchemaTypes::Tag::Integer )
 	{
 		return "";
 	}
-	return stringVar;
+	return mStringVar;
 }
 
 /// <summary>
@@ -32,7 +41,7 @@ std::string Register::GetString()
 /// <returns></returns>
 SchemaTypes::Tag Register::GetType()
 {
-	return type;
+	return mType;
 }
 
 bool Register::operator!=( const Register& other ) const
@@ -42,15 +51,15 @@ bool Register::operator!=( const Register& other ) const
 
 bool Register::operator==( const Register& other ) const
 {
-	if ( this->type == other.type )
+	if ( this->mType == other.mType )
 	{
-		if( this->type == SchemaTypes::Tag::Char )
+		if( this->mType == SchemaTypes::Tag::Char )
 		{
-			return this->stringVar == other.stringVar;
+			return this->mStringVar == other.mStringVar;
 		}
-		else if( this->type == SchemaTypes::Tag::Integer )
+		else if( this->mType == SchemaTypes::Tag::Integer )
 		{
-			return this->intVar == other.intVar;
+			return this->mIntVar == other.mIntVar;
 		}
 	}
 	return false;

@@ -26,11 +26,13 @@ public:
 
 private:
 	uint64_t mSegmentId = 0;
-	uint64_t mCurPageId = 0;
+	uint64_t mCurPageId = 0; // page id without segment id merged
 	uint64_t mCurSlot = 0;
 	BufferFrame* mCurFrame = nullptr;
 	DBCore& mCore;
 	BufferManager& mBufferManager;
+	std::vector<Register*> mRegisters;
 	
+	void TupleToRegisters( uint8_t* datastart, uint32_t size );
 };
 #endif

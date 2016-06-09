@@ -131,6 +131,32 @@ const Schema* DBCore::GetSchema()
 }
 
 /// <summary>
+/// Performs a threadsafe attribute fetch and copies them to a return vector.
+/// </summary>
+/// <param name="segmentId">The segment identifier.</param>
+/// <returns></returns>
+std::vector<Schema::Relation::Attribute> DBCore::GetRelationAttributes( uint64_t segmentId )
+{
+	std::vector<Schema::Relation::Attribute> vec;
+	mSchemaLock.LockRead();
+	try
+	{
+		Schema::Relation& r = mMasterSchema.GetRelationWithSegmentId( segmentId );
+		for ( Schema::Relation::Attribute& a : r.attributes )
+		{
+			vec.push_back( a );
+		}
+	}
+	catch ( std::runtime_error& e )
+	{
+		mSchemaLock.UnlockRead();
+		throw std::runtime_error( e.what() );
+	}
+	mSchemaLock.UnlockRead();
+	return vec;
+}
+
+/// <summary>
 /// Gets the pages of a relation. Threadsafe iteration through schema. But number of pages can increase after return.
 /// Throws on non-existent relation
 /// </summary>
