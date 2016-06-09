@@ -25,6 +25,5 @@ private:
 	QueryOperator& mInput;
 	std::iostream& mOutstream;
 	std::vector<Register*> mInputRegister;
-	std::vector<Register*> mOutputRegister;
 };
 #endif

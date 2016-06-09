@@ -2,6 +2,7 @@
 #ifndef SELECT_OPERATOR_H
 #define SELECT_OPERATOR_H
 
+#include "sql/SchemaTypes.h"
 #include "query/QueryOperator.h"
 #include <vector>
 
@@ -12,7 +13,8 @@ class Register;
 class SelectOperator : public QueryOperator
 {
 public:
-	SelectOperator(QueryOperator& input);
+	SelectOperator( QueryOperator& input, std::string targetAttrName, std::string constant );
+	SelectOperator( QueryOperator& input, std::string targetAttrName, uint32_t constant );
 	~SelectOperator();
 	
 	void Open() override;
@@ -22,6 +24,11 @@ public:
 
 private:
 	QueryOperator& mInput;
-
+	bool mConstantIsString;
+	std::string mStrConstant;
+	Integer mIntConstant;
+	std::string mTargetAttrName;
+	uint32_t mTargetRegister;
+	std::vector<Register*> mInputRegister;
 };
 #endif

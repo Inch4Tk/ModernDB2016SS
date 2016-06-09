@@ -12,6 +12,7 @@
 
 #include <unordered_map>
 #include "query/ProjectionOperator.h"
+#include "query/SelectOperator.h"
 
 std::vector<std::string> firstNames = {
 	"Jack",
@@ -421,5 +422,34 @@ TEST_F( QueryTest, ProjectionOperatorQuery )
 	EXPECT_EQ( registers1[3]->GetInteger(), ageOrder[0] );
 	EXPECT_EQ( registers1[4]->GetString(), nameOrder[0] );
 	prop1.Close();
+}
 
+// Test selection operator
+TEST_F( QueryTest, SelectOperatorQuery )
+{
+	std::vector<uint32_t> indices;
+	// Manually find every entry in order preserve relation that is of age 30
+	for ( uint32_t i = 0; i < ageOrder.size(); ++i )
+	{
+		if (ageOrder[i] == 30)
+		{
+			indices.push_back( i );
+		}
+	}
+
+	TableScanOperator tsop( "dbtestOrderPreserv", *core, *core->GetBufferManager() );
+	SelectOperator sop( tsop, "age", 30u );
+	sop.Open();
+	std::vector<Register*> registers = sop.GetOutput();
+	uint32_t curidx = 0;
+	while (sop.Next())
+	{
+		// Compare fields to check if it is the same entry
+		EXPECT_EQ( registers[0]->GetString(), nameOrder[indices[curidx]] );
+		EXPECT_EQ( registers[1]->GetInteger(), ageOrder[indices[curidx]] );
+		EXPECT_EQ( registers[2]->GetString(), somefieldOrder[indices[curidx]] );
+		EXPECT_EQ( registers[3]->GetInteger(), lastfieldOrder[indices[curidx]] );
+		++curidx;
+	}
+	sop.Close();
 }

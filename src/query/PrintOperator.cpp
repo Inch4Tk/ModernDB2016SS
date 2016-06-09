@@ -19,7 +19,6 @@ void PrintOperator::Open()
 {
 	mInput.Open();
 	mInputRegister = mInput.GetOutput();
-	mOutputRegister = mInputRegister;
 }
 
 /// <summary>
@@ -58,7 +57,7 @@ bool PrintOperator::Next()
 /// <returns></returns>
 std::vector<Register*> PrintOperator::GetOutput()
 {
-	return mOutputRegister;
+	return mInputRegister;
 }
 
 /// <summary>
