@@ -76,7 +76,7 @@ bool TableScanOperator::Next()
 		mCurFrame = &mBufferManager.FixPage( BufferManager::MergePageId( mSegmentId, mCurPageId ), false );
 		sp = reinterpret_cast<SlottedPage*>(mCurFrame->GetData());
 	}
-	else
+	else if ( mCurPageId + 1 >= pagecount && mCurSlot >= sp->GetSlotCount() )
 	{
 		// on the last page and out of slots return false
 		return false;
@@ -94,8 +94,14 @@ bool TableScanOperator::Next()
 		if ( slot->IsFree() || slot->IsOtherRecordTID() )
 			continue;
 
+		uint32_t exOffset = 0;
+		if (slot->IsFromOtherPage())
+		{
+			exOffset = 8; // compensate backlink tid
+		}
+
 		// Got a valid slot, read values to register and return
-		TupleToRegisters( reinterpret_cast<uint8_t*>(sp->GetDataPointer( slot->GetOffset() )), slot->GetLength() );
+		TupleToRegisters( reinterpret_cast<uint8_t*>(sp->GetDataPointer( slot->GetOffset() + exOffset )), slot->GetLength() - exOffset );
 		return true;
 	}
 
@@ -163,5 +169,5 @@ void TableScanOperator::TupleToRegisters( uint8_t* data, uint32_t size )
 		}
 	}
 
-	assert( originalStart - data == size ); // Just for control
+	assert( data - originalStart == size ); // Just for control
 }
