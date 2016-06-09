@@ -8,6 +8,8 @@
 
 #include "gtest/gtest.h"
 
+#include <unordered_map>
+
 std::vector<std::string> firstNames = {
 	"Jack",
 	"Donald",
@@ -83,8 +85,9 @@ public:
 		// age: integer
 		// bcharfield: char(30)
 		//////
-		std::string sql = std::string("create table dbtestA ( name char(50), age integer, somefield char(30), lastfield integer, primary key (lastfield));\n") +
-			"create table dbtestB ( bestfield integer, age integer, bcharfield char(30), primary key (bestfield));";
+		std::string sql = std::string( "create table dbtestA ( name char(50), age integer, somefield char(30), lastfield integer, primary key (lastfield) );\n" ) +
+			"create table dbtestB ( bestfield integer, age integer, bcharfield char(30), primary key (bestfield) );\n" +
+			"create table dbtestOrderPreserv ( name char(50), age integer, somefield char(30), lastfield integer, primary key (lastfield) );";
 		core->AddRelationsFromString( sql );
 
 		// Add a few hundred random entries to both relations so we can do some multipage queries
@@ -98,6 +101,13 @@ public:
 		{
 			spB->Insert( GenerateRecordB() );
 		}
+		// Special relation that is the same as dbtestA, but used in tests where we need to preserve the order of inserts
+		// (inserts can swap order if strings have different sizes, so one tuple still fits a hole that another doesn't)
+		std::unique_ptr<SPSegment> spOrderpreserv = core->GetSPSegment( "dbtestOrderPreserv" );
+		for ( uint32_t i = 0; i < 750; ++i )
+		{
+			spOrderpreserv->Insert( GenerateRecordOrder() );
+		}
 	}
 	virtual void TearDown() override
 	{
@@ -105,13 +115,18 @@ public:
 	}
 	DBCore* core;
 	std::vector<std::string> nameA;
-	std::vector<uint32_t> ageA;
+	std::vector<Integer> ageA;
 	std::vector<std::string> somefieldA;
-	std::vector<uint32_t> lastfieldA;
+	std::vector<Integer> lastfieldA;
 
-	std::vector<uint32_t> bestfieldB;
-	std::vector<uint32_t> ageB;
+	std::vector<Integer> bestfieldB;
+	std::vector<Integer> ageB;
 	std::vector<std::string> bcharfieldB;
+
+	std::vector<std::string> nameOrder;
+	std::vector<Integer> ageOrder;
+	std::vector<std::string> somefieldOrder;
+	std::vector<Integer> lastfieldOrder;
 
 	Record GenerateRecordA()
 	{
@@ -123,7 +138,7 @@ public:
 		AppendToData( firstNames[n1] + " " + lastNames[n2], data );
 
 		// age
-		uint32_t r = rand() % 90;
+		Integer r = rand() % 90;
 		ageA.push_back( r );
 		AppendToData( r, data );
 
@@ -134,7 +149,7 @@ public:
 
 		// lastfield
 		r = rand();
-		ageA.push_back( r );
+		lastfieldA.push_back( r );
 		AppendToData( r, data );
 
 		return Record( static_cast<uint32_t>(data.size()), &data[0] );
@@ -143,7 +158,7 @@ public:
 	{
 		std::vector<uint8_t> data;
 		// bestfield
-		uint32_t r = rand();
+		Integer r = rand();
 		bestfieldB.push_back( r );
 		AppendToData( r, data );
 
@@ -156,6 +171,35 @@ public:
 		std::string chosen = randomStrings[rand() % randomStrings.size()];
 		bcharfieldB.push_back( chosen );
 		AppendToData( chosen, data );
+
+		return Record( static_cast<uint32_t>(data.size()), &data[0] );
+	}
+	Record GenerateRecordOrder()
+	{
+		std::vector<uint8_t> data;
+		// name
+		uint32_t n1 = rand() % firstNames.size();
+		uint32_t n2 = rand() % lastNames.size();
+		std::string ins = firstNames[n1] + " " + lastNames[n2];
+		PadRightTo( ins, 50 );
+		nameOrder.push_back( ins );
+		AppendToData( ins, data );
+
+		// age
+		Integer r = rand() % 90;
+		ageOrder.push_back( r );
+		AppendToData( r, data );
+
+		// somefield
+		std::string chosen = randomStrings[rand() % randomStrings.size()];
+		PadRightTo( chosen, 30 );
+		somefieldOrder.push_back( chosen );
+		AppendToData( chosen, data );
+
+		// lastfield
+		r = rand();
+		lastfieldOrder.push_back( r );
+		AppendToData( r, data );
 
 		return Record( static_cast<uint32_t>(data.size()), &data[0] );
 	}
@@ -178,17 +222,22 @@ public:
 			data.push_back( ptr[i] );
 		}
 	}
+
+	void PadRightTo( std::string &str, const size_t num, const char paddingChar = ' ' )
+	{
+		if ( num > str.size() )
+			str.insert( str.size(), num - str.size(), paddingChar );
+	}
 };
 
 // There is a single test for every query directly after a table scan to test principal correctness
 // In the end there is one big query chaining all the queries together
-// TODO: Think about testing for updated/deleted table scan
 
 // Test if the table scan works correctly
 // This also tests correct setup of registers
 TEST_F( QueryTest, TableScanQuery )
 {
-	TableScanOperator op( "dbtestA", *core, *core->GetBufferManager() );
+	TableScanOperator op( "dbtestOrderPreserv", *core, *core->GetBufferManager() );
 	op.Open();
 	std::vector<Register*> registers = op.GetOutput();
 	EXPECT_EQ( registers.size(), 4 );
@@ -206,11 +255,102 @@ TEST_F( QueryTest, TableScanQuery )
 	uint32_t curidx = 0;
 	while (op.Next())
 	{
-		EXPECT_EQ( registers[0]->GetString(), nameA[curidx] );
-		EXPECT_EQ( registers[1]->GetInteger(), ageA[curidx] );
-		EXPECT_EQ( registers[2]->GetString(), somefieldA[curidx] );
-		EXPECT_EQ( registers[3]->GetInteger(), lastfieldA[curidx] );
+		EXPECT_EQ( registers[0]->GetString(), nameOrder[curidx] );
+		EXPECT_EQ( registers[1]->GetInteger(), ageOrder[curidx] );
+		EXPECT_EQ( registers[2]->GetString(), somefieldOrder[curidx] );
+		EXPECT_EQ( registers[3]->GetInteger(), lastfieldOrder[curidx] );
 		++curidx;
 	}
+	EXPECT_EQ( curidx, 750 );
+	op.Close();
+}
+
+// This tests that the table scan still works after deletes and updates
+TEST_F( QueryTest, TableScanAfterDeleteUpdates )
+{
+	// We make a test that every still existing value will be returned but no more and order does not matter
+	// Use a different database to make things much more simple
+	core->WipeDatabase();
+	std::vector<TID> tids;
+	std::unordered_map<TID, uint32_t> tidmapping;
+	std::unordered_map<uint32_t, bool> shouldexist;
+	std::unordered_map<uint32_t, bool> deleted;
+	std::string sql = std::string( "create table dbtestA ( int integer, primary key (int) );" );
+	core->AddRelationsFromString( sql );
+
+	std::unique_ptr<SPSegment> spA = core->GetSPSegment( "dbtestA" );
+	for ( uint32_t i = 0; i < 3000; ++i )
+	{
+		TID t = spA->Insert( Record( 4, reinterpret_cast<uint8_t*>(&i) ) );
+		tids.push_back( t );
+		tidmapping.insert( std::make_pair( t, i ) );
+		shouldexist.insert( std::make_pair( i, true ) );
+	}
+
+	for ( uint32_t i = 0; i < 1500; ++i )
+	{
+		uint32_t targetIdx = rand() % tids.size();
+		TID target = tids[targetIdx];
+		if (rand() % 2 == 1)
+		{
+			// Delete
+			tids[targetIdx] = tids[tids.size() - 1];
+			tids.pop_back();
+			shouldexist[tidmapping[target]] = false;
+			//deleted.insert( std::make_pair( tidmapping[target], true ) );
+			tidmapping.erase(target);
+			spA->Remove( target );
+		}
+		else
+		{
+			// Update
+			uint32_t old = tidmapping[target];
+			uint32_t newval = i + 3000;
+			tidmapping[target] = newval;
+			shouldexist[old] = false;
+			shouldexist.insert( std::make_pair( newval, true ) );
+			spA->Update( target, Record( 4, reinterpret_cast<uint8_t*>(&newval) ) );
+		}
+	}
+
+	// Make sure our bookkeeping is correct
+	// We expect exactly InsertCount - DeleteCount truthy values
+	// DeleteCount = 4500 - Shouldexist.size, because only delete does not add anything to shouldexist
+	uint32_t existing = 0;
+	for ( auto pair : shouldexist )
+	{
+		if (pair.second)
+		{
+			existing++;
+		}
+	}
+	EXPECT_EQ( existing, 3000 - (4500 - shouldexist.size()) );
+
+	TableScanOperator op( "dbtestA", *core, *core->GetBufferManager() );
+	op.Open();
+	std::vector<Register*> registers = op.GetOutput();
+	uint32_t curidx = 0;
+	while ( op.Next() )
+	{
+		Integer i = registers[0]->GetInteger();
+		auto it = shouldexist.find( i );
+		if (it != shouldexist.end())
+		{
+			EXPECT_EQ( it->second, true ); // If we found it we expect it should be there
+			shouldexist[i] = false; // We only want to see everything once
+		}
+		else
+		{
+			EXPECT_TRUE( false ); // should always find every entry
+		}
+		
+		++curidx;
+	}
+	// Make a pass over our map and check that we found everything (everything is set to false)
+	for (auto pair : shouldexist)
+	{
+		EXPECT_FALSE( pair.second );
+	}
+
 	op.Close();
 }
