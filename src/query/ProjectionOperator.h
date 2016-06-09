@@ -12,7 +12,8 @@ class Register;
 class ProjectionOperator: public QueryOperator
 {
 public:
-	ProjectionOperator(QueryOperator& input);
+	ProjectionOperator( QueryOperator& input, std::vector<uint32_t> indices );
+	ProjectionOperator( QueryOperator& input, std::vector<std::string> attrNames );
 	~ProjectionOperator();
 	
 	void Open() override;
@@ -22,6 +23,9 @@ public:
 
 private:
 	QueryOperator& mInput;
-
+	std::vector<uint32_t> mIndices;
+	std::vector<std::string> mAttrNames;
+	std::vector<Register*> mInputRegister;
+	std::vector<Register*> mOutputRegister;
 };
 #endif

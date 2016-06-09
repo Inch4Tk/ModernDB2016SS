@@ -11,6 +11,7 @@
 #include "gtest/gtest.h"
 
 #include <unordered_map>
+#include "query/ProjectionOperator.h"
 
 std::vector<std::string> firstNames = {
 	"Jack",
@@ -377,4 +378,48 @@ TEST_F(QueryTest, PrintOperatorQuery)
 		++curidx;
 	}
 	prop.Close();
+}
+
+// Test projection operator
+TEST_F( QueryTest, ProjectionOperatorQuery )
+{
+	// Project to fewer and change order
+	TableScanOperator tsop0( "dbtestOrderPreserv", *core, *core->GetBufferManager() );
+	ProjectionOperator prop0( tsop0, std::vector<std::string>( { "somefield", "name" } ) );
+	prop0.Open();
+	std::vector<Register*> registers0 = prop0.GetOutput();
+	EXPECT_EQ( registers0[0]->GetType(), SchemaTypes::Tag::Char );
+	EXPECT_EQ( registers0[1]->GetType(), SchemaTypes::Tag::Char );
+	EXPECT_EQ( registers0[0]->GetAttributeName(), std::string( "somefield" ) );
+	EXPECT_EQ( registers0[1]->GetAttributeName(), std::string( "name" ) );
+	// Fetch first value and check if that is correct
+	prop0.Next();
+	EXPECT_EQ( registers0[0]->GetString(), somefieldOrder[0] );
+	EXPECT_EQ( registers0[1]->GetString(), nameOrder[0] );
+	prop0.Close();
+
+	// Project a field multiple times
+	TableScanOperator tsop1( "dbtestOrderPreserv", *core, *core->GetBufferManager() );
+	ProjectionOperator prop1( tsop1, std::vector<std::string>( { "name", "somefield", "age", "age", "name" } ) );
+	prop1.Open();
+	std::vector<Register*> registers1 = prop1.GetOutput();
+	EXPECT_EQ( registers1[0]->GetType(), SchemaTypes::Tag::Char );
+	EXPECT_EQ( registers1[1]->GetType(), SchemaTypes::Tag::Char );
+	EXPECT_EQ( registers1[2]->GetType(), SchemaTypes::Tag::Integer );
+	EXPECT_EQ( registers1[3]->GetType(), SchemaTypes::Tag::Integer );
+	EXPECT_EQ( registers1[4]->GetType(), SchemaTypes::Tag::Char );
+	EXPECT_EQ( registers1[0]->GetAttributeName(), std::string( "name" ) );
+	EXPECT_EQ( registers1[1]->GetAttributeName(), std::string( "somefield" ) );
+	EXPECT_EQ( registers1[2]->GetAttributeName(), std::string( "age" ) );
+	EXPECT_EQ( registers1[3]->GetAttributeName(), std::string( "age" ) );
+	EXPECT_EQ( registers1[4]->GetAttributeName(), std::string( "name" ) );
+	// Fetch first value and check if that is correct
+	prop1.Next();
+	EXPECT_EQ( registers1[0]->GetString(), nameOrder[0] );
+	EXPECT_EQ( registers1[1]->GetString(), somefieldOrder[0] );
+	EXPECT_EQ( registers1[2]->GetInteger(), ageOrder[0] );
+	EXPECT_EQ( registers1[3]->GetInteger(), ageOrder[0] );
+	EXPECT_EQ( registers1[4]->GetString(), nameOrder[0] );
+	prop1.Close();
+
 }
