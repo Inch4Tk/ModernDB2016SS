@@ -40,6 +40,7 @@ void SelectOperator::Open()
 				assert( r->GetType() == SchemaTypes::Tag::Char );
 			else
 				assert( r->GetType() == SchemaTypes::Tag::Integer );
+			break;
 		}
 		++curidx;
 	}

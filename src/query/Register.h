@@ -7,6 +7,7 @@
 class Register
 {
 	friend class TableScanOperator;
+	friend class HashJoinOperator;
 public:
 	std::string GetAttributeName();
 	Integer GetInteger();
