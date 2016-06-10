@@ -13,6 +13,7 @@
 #include <unordered_map>
 #include "query/ProjectionOperator.h"
 #include "query/SelectOperator.h"
+#include "query/HashJoinOperator.h"
 
 std::vector<std::string> firstNames = {
 	"Jack",
@@ -134,6 +135,7 @@ public:
 
 	Record GenerateRecordA()
 	{
+		static uint32_t ctr = 0;
 		std::vector<uint8_t> data;
 		// name
 		uint32_t n1 = rand() % firstNames.size();
@@ -142,7 +144,7 @@ public:
 		AppendToData( firstNames[n1] + " " + lastNames[n2], data );
 
 		// age
-		Integer r = rand() % 90;
+		Integer r = rand() % 100;
 		ageA.push_back( r );
 		AppendToData( r, data );
 
@@ -152,10 +154,11 @@ public:
 		AppendToData( chosen, data );
 
 		// lastfield
-		r = rand();
+		r = ctr;
 		lastfieldA.push_back( r );
 		AppendToData( r, data );
 
+		++ctr;
 		return Record( static_cast<uint32_t>(data.size()), &data[0] );
 	}
 	Record GenerateRecordB()
@@ -167,7 +170,7 @@ public:
 		AppendToData( r, data );
 
 		// age
-		r = rand() % 90;
+		r = rand() % 100;
 		ageB.push_back( r );
 		AppendToData( r, data );
 
@@ -452,4 +455,78 @@ TEST_F( QueryTest, SelectOperatorQuery )
 		++curidx;
 	}
 	sop.Close();
+}
+
+// Test Hash join Operator
+TEST_F( QueryTest, HashJoinOperatorQuery )
+{
+	// Build the results
+	std::unordered_multimap<Integer, uint32_t> ageToIndex;
+	std::unordered_multimap<Integer, std::pair<uint32_t, uint32_t>> results; // Map age to two indices
+
+	for ( uint32_t i = 0; i < ageA.size(); ++i )
+	{
+		ageToIndex.insert( std::make_pair( ageA[i], i ) );
+	}
+	for ( uint32_t i = 0; i < ageB.size(); ++i )
+	{
+		auto it = ageToIndex.equal_range( ageB[i] );
+		while (it.first != it.second)
+		{
+			// Produce pairs
+			results.insert( std::make_pair( it.first->first, std::make_pair( it.first->second, i ) ) );
+			++(it.first);
+		}
+	}
+
+	// Do the database ops
+	TableScanOperator tsopA( "dbtestA", *core, *core->GetBufferManager() );
+	TableScanOperator tsopB( "dbtestB", *core, *core->GetBufferManager() );
+	HashJoinOperator hjop( tsopA, tsopB, "age", "age" ); // Join all same age pairs
+	hjop.Open();
+	std::vector<Register*> registers = hjop.GetOutput();
+	// Check registers
+	EXPECT_EQ( registers.size(), 6 );
+	// Names
+	EXPECT_EQ( registers[0]->GetAttributeName(), std::string( "name" ) );
+	EXPECT_EQ( registers[1]->GetAttributeName(), std::string( "age" ) );
+	EXPECT_EQ( registers[2]->GetAttributeName(), std::string( "somefield" ) );
+	EXPECT_EQ( registers[3]->GetAttributeName(), std::string( "lastfield" ) );
+	EXPECT_EQ( registers[4]->GetAttributeName(), std::string( "bestfield" ) );
+	EXPECT_EQ( registers[5]->GetAttributeName(), std::string( "bcharfield" ) );
+	// Types
+	EXPECT_EQ( registers[0]->GetType(), SchemaTypes::Tag::Char );
+	EXPECT_EQ( registers[1]->GetType(), SchemaTypes::Tag::Integer );
+	EXPECT_EQ( registers[2]->GetType(), SchemaTypes::Tag::Char );
+	EXPECT_EQ( registers[3]->GetType(), SchemaTypes::Tag::Integer );
+	EXPECT_EQ( registers[4]->GetType(), SchemaTypes::Tag::Integer );
+	EXPECT_EQ( registers[5]->GetType(), SchemaTypes::Tag::Char );
+	while ( hjop.Next() )
+	{
+		// Compare the result to all potential result candidates. We have to find the candidate. 
+		// If we found the candidate, delete it from results set
+		auto it = results.equal_range( registers[1]->GetInteger() );
+		bool found = false;
+		while ( it.first != it.second )
+		{
+			uint32_t idxA = it.first->second.first;
+			uint32_t idxB = it.first->second.second;
+			if ( registers[0]->GetString() == nameA[idxA] &&
+				 registers[1]->GetInteger() == ageA[idxA] && 
+				 registers[1]->GetInteger() == ageB[idxB] &&
+				 registers[2]->GetString() == somefieldA[idxA] && 
+				 registers[3]->GetInteger() == lastfieldA[idxA] && 
+				 registers[4]->GetInteger() == bestfieldB[idxB] &&
+				 registers[5]->GetString() == bcharfieldB[idxB] )
+			{
+				results.erase( it.first );
+				found = true;
+				break;
+			}
+			++(it.first);
+		}
+		EXPECT_TRUE( found );
+	}
+	EXPECT_EQ( 0, results.size() );
+	hjop.Close();
 }

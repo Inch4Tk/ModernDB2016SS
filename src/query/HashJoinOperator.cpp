@@ -106,6 +106,7 @@ void HashJoinOperator::Open()
 			mOutputRegister.push_back( r );
 		}
 	}
+	mInputRight.Next(); // Load the first tuple from the right
 }
 
 /// <summary>
