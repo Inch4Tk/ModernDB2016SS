@@ -13,7 +13,7 @@ class Register;
 class PrintOperator : public QueryOperator
 {
 public:
-	PrintOperator( QueryOperator& input, std::iostream& outstream );
+	PrintOperator( QueryOperator& input, std::ostream& outstream );
 	~PrintOperator();
 	
 	void Open() override;
@@ -23,7 +23,7 @@ public:
 
 private:
 	QueryOperator& mInput;
-	std::iostream& mOutstream;
+	std::ostream& mOutstream;
 	std::vector<Register*> mInputRegister;
 };
 #endif

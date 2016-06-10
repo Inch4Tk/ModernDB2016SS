@@ -7,13 +7,13 @@
 #include "query/QueryOperator.h"
 #include "query/TableScanOperator.h"
 #include "query/PrintOperator.h"
+#include "query/ProjectionOperator.h"
+#include "query/SelectOperator.h"
+#include "query/HashJoinOperator.h"
 
 #include "gtest/gtest.h"
 
 #include <unordered_map>
-#include "query/ProjectionOperator.h"
-#include "query/SelectOperator.h"
-#include "query/HashJoinOperator.h"
 
 std::vector<std::string> firstNames = {
 	"Jack",

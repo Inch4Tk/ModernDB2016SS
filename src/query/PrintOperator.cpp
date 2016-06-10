@@ -2,7 +2,7 @@
 
 #include "Register.h"
 
-PrintOperator::PrintOperator( QueryOperator& input, std::iostream& outstream ) : mInput(input), mOutstream(outstream)
+PrintOperator::PrintOperator( QueryOperator& input, std::ostream& outstream ) : mInput(input), mOutstream(outstream)
 {
 
 }
