@@ -530,3 +530,77 @@ TEST_F( QueryTest, HashJoinOperatorQuery )
 	EXPECT_EQ( 0, results.size() );
 	hjop.Close();
 }
+
+
+TEST_F( QueryTest, ChainedOperatorsQuery )
+{
+	// Two table scans on A and B
+	// Hash joined on age
+	// Selected to only those in B which contain those with bcharfield == YW6MWL1Ru9spoY
+	// Projected down to only name, bcharfield and age
+	// Printing is left out since google test would just print out everything or we do an extra unnecessary string check
+	// (Of course first selecting on B then hash joining would be more performant but w/e, this way we get to see the db deal with bigger numbers)
+	// Build results
+	std::unordered_multimap<Integer, uint32_t> ageToIndex;
+	std::unordered_multimap<Integer, std::pair<uint32_t, uint32_t>> results; // Map age to two indices
+	for ( uint32_t i = 0; i < ageA.size(); ++i )
+	{
+		ageToIndex.insert( std::make_pair( ageA[i], i ) );
+	}
+	for ( uint32_t i = 0; i < ageB.size(); ++i )
+	{
+		if ( bcharfieldB[i] != "YW6MWL1Ru9spoY" )
+			continue;
+
+		auto it = ageToIndex.equal_range( ageB[i] );
+		while ( it.first != it.second )
+		{
+			// Produce pairs
+			results.insert( std::make_pair( it.first->first, std::make_pair( it.first->second, i ) ) );
+			++(it.first);
+		}
+	}
+
+	// Do actual database
+	TableScanOperator tsopA( "dbtestA", *core, *core->GetBufferManager() );
+	TableScanOperator tsopB( "dbtestB", *core, *core->GetBufferManager() );
+	HashJoinOperator hjop( tsopA, tsopB, "age", "age" ); // Join all same age pairs
+	SelectOperator sop( hjop, "bcharfield", "YW6MWL1Ru9spoY" );
+	ProjectionOperator prop( sop, std::vector<std::string>( { "name", "bcharfield", "age" } ) );
+	prop.Open();
+	std::vector<Register*> registers = prop.GetOutput();
+	// Check registers
+	EXPECT_EQ( registers.size(), 3 );
+	// Names
+	EXPECT_EQ( registers[0]->GetAttributeName(), std::string( "name" ) );
+	EXPECT_EQ( registers[1]->GetAttributeName(), std::string( "bcharfield" ) );
+	EXPECT_EQ( registers[2]->GetAttributeName(), std::string( "age" ) );
+	// Types
+	EXPECT_EQ( registers[0]->GetType(), SchemaTypes::Tag::Char );
+	EXPECT_EQ( registers[1]->GetType(), SchemaTypes::Tag::Char );
+	EXPECT_EQ( registers[2]->GetType(), SchemaTypes::Tag::Integer );
+
+	while ( prop.Next() )
+	{
+		// Compare the result to all potential result candidates. We have to find the candidate. 
+		// If we found the candidate, delete it from results set
+		auto it = results.equal_range( registers[2]->GetInteger() );
+		bool found = false;
+		while ( it.first != it.second )
+		{
+			uint32_t idxA = it.first->second.first;
+			uint32_t idxB = it.first->second.second;
+			if ( registers[0]->GetString() == nameA[idxA] &&
+				 registers[1]->GetString() == bcharfieldB[idxB] )
+			{
+				results.erase( it.first );
+				found = true;
+				break;
+			}
+			++(it.first);
+		}
+		EXPECT_TRUE( found );
+	}
+	EXPECT_EQ( 0, results.size() );
+	prop.Close();
+}
