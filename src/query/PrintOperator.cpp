@@ -19,6 +19,16 @@ void PrintOperator::Open()
 {
 	mInput.Open();
 	mInputRegister = mInput.GetOutput();
+	// Print out all the Register names
+	for (Register* r: mInputRegister)
+	{
+		mOutstream << r->GetAttributeName();
+		if ( mInputRegister.back() != r )
+		{
+			mOutstream << ", ";
+		}
+	}
+	mOutstream << std::endl;
 }
 
 /// <summary>

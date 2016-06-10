@@ -370,6 +370,9 @@ TEST_F(QueryTest, PrintOperatorQuery)
 	std::stringstream ss;
 	PrintOperator prop( tsop, ss );
 	prop.Open();
+	std::string gotatts( std::istreambuf_iterator<char>( ss ), {} );
+	std::string expectedAtts = "name, age, somefield, lastfield\n";
+	EXPECT_EQ( expectedAtts, gotatts );
 	std::vector<Register*> registers = prop.GetOutput();
 	uint32_t curidx = 0;
 	while ( prop.Next() )
