@@ -67,7 +67,7 @@ void BPTreeNode<T, CMP>::SetValue( uint32_t index, uint64_t value )
 		return;
 	}
 	const uint32_t pairsize = sizeof( T ) + sizeof( uint64_t );
-	*reinterpret_cast<uint64_t*>(&mData[index * pairsize] + sizeof( T )) = value;
+	memcpy( &mData[index * pairsize] + sizeof( T ), &value, sizeof( uint64_t ) );
 }
 
 /// <summary>
@@ -180,7 +180,9 @@ uint64_t BPTreeNode<T, CMP>::GetValue( uint32_t index )
 		return mNextUpper;
 	}
 	const uint32_t pairsize = sizeof( T ) + sizeof( uint64_t );
-	return *reinterpret_cast<uint64_t*>(&mData[index * pairsize] + sizeof(T));
+	uint64_t result = 0;
+	memcpy( &result, &mData[index * pairsize] + sizeof( T ), sizeof( uint64_t ) );
+	return result;
 }
 
 /// <summary>
@@ -192,7 +194,9 @@ template <class T, typename CMP>
 T BPTreeNode<T, CMP>::GetKey( uint32_t index )
 {
 	const uint32_t pairsize = sizeof( T ) + sizeof( uint64_t );
-	return *reinterpret_cast<T*>(&mData[index * pairsize]);
+	T result;
+	memcpy( &result, &mData[index * pairsize], sizeof( T ) );
+	return result;
 }
 
 /// <summary>

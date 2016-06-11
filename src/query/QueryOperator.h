@@ -3,6 +3,8 @@
 #define QUERY_OPERATOR_H
 
 #include <vector>
+#include <string>
+#include <stdint.h>
 
 // Forwards
 class Register;

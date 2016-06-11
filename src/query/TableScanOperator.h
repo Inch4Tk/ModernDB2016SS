@@ -3,7 +3,6 @@
 #define TABLE_SCAN_OPERATOR_H
 
 #include "query/QueryOperator.h"
-#include <vector>
 
 // Forwards
 class Register;

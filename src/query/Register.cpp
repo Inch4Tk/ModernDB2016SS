@@ -17,7 +17,7 @@ Integer Register::GetInteger()
 {
 	if (this->mType == SchemaTypes::Tag::Char)
 	{
-		return INT_MIN;
+		return -2147483647 - 1; // INT_MIN
 	}
 	return mIntVar;
 }
